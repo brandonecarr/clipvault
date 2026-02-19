@@ -1,0 +1,301 @@
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { createClient } from '../../../lib/supabase/server';
+import { NewFolderModal } from '../../../components/NewFolderModal';
+import { AddVideoModal } from '../../../components/AddVideoModal';
+
+const PLATFORM_LABELS: Record<string, string> = {
+  YOUTUBE: 'YouTube',
+  TIKTOK: 'TikTok',
+  INSTAGRAM: 'Instagram',
+  FACEBOOK: 'Facebook',
+  PINTEREST: 'Pinterest',
+  X_TWITTER: 'X / Twitter',
+  VIMEO: 'Vimeo',
+  REDDIT: 'Reddit',
+  OTHER: 'Link',
+};
+
+const PLATFORM_COLORS: Record<string, string> = {
+  YOUTUBE: '#FF0000',
+  TIKTOK: '#010101',
+  INSTAGRAM: '#E1306C',
+  FACEBOOK: '#1877F2',
+  PINTEREST: '#E60023',
+  X_TWITTER: '#000000',
+  VIMEO: '#1AB7EA',
+  REDDIT: '#FF4500',
+  OTHER: '#636E72',
+};
+
+interface Folder {
+  id: string;
+  name: string;
+  color: string | null;
+  icon: string | null;
+  description: string | null;
+  parentId: string | null;
+}
+
+interface Video {
+  id: string;
+  url: string;
+  platform: string;
+  title: string | null;
+  thumbnailUrl: string | null;
+  duration: number | null;
+  authorName: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+function formatDuration(seconds: number | null): string | null {
+  if (!seconds) return null;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+export default async function FolderPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect('/login');
+
+  const { data: folder } = await supabase
+    .from('Folder')
+    .select('id, name, color, icon, description, "parentId"')
+    .eq('id', id)
+    .single();
+
+  if (!folder) redirect('/library');
+
+  const [{ data: videos }, { data: subfolders }, parentResult] = await Promise.all([
+    supabase
+      .from('Video')
+      .select('id, url, platform, title, "thumbnailUrl", duration, "authorName", notes, "createdAt"')
+      .eq('"folderId"', id)
+      .order('"createdAt"', { ascending: false }),
+    supabase
+      .from('Folder')
+      .select('id, name, color, icon, description')
+      .eq('"parentId"', id)
+      .order('"sortOrder"', { ascending: true }),
+    folder.parentId
+      ? supabase
+          .from('Folder')
+          .select('id, name')
+          .eq('id', folder.parentId)
+          .single()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const parentFolder = parentResult.data as { id: string; name: string } | null;
+
+  const typedFolder = folder as Folder;
+  const typedVideos = (videos ?? []) as Video[];
+  const typedSubfolders = (subfolders ?? []) as Folder[];
+
+  return (
+    <div className="min-h-screen bg-[#F8F9FA]">
+      {/* Nav */}
+      <nav className="sticky top-0 z-10 border-b border-[#E0E0E0] bg-white">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#6C5CE7]">
+              <span className="text-base">📼</span>
+            </div>
+            <span className="font-bold text-[#2D3436]">ClipVault</span>
+          </Link>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-[#636E72]">{user.email}</span>
+            <form action="/auth/signout" method="POST">
+              <button
+                type="submit"
+                className="rounded-lg border border-[#E0E0E0] px-3 py-1.5 text-xs font-medium text-[#636E72] transition hover:bg-[#F8F9FA] hover:text-[#2D3436]"
+              >
+                Sign out
+              </button>
+            </form>
+          </div>
+        </div>
+      </nav>
+
+      <main className="mx-auto max-w-5xl px-6 py-8">
+        {/* Breadcrumb */}
+        <nav className="mb-6 flex items-center gap-1.5 text-sm text-[#636E72]">
+          <Link href="/library" className="hover:text-[#2D3436] transition">
+            Library
+          </Link>
+          {parentFolder && (
+            <>
+              <span>/</span>
+              <Link
+                href={`/folder/${parentFolder.id}`}
+                className="hover:text-[#2D3436] transition"
+              >
+                {parentFolder.name}
+              </Link>
+            </>
+          )}
+          <span>/</span>
+          <span className="font-medium text-[#2D3436]">{typedFolder.name}</span>
+        </nav>
+
+        {/* Folder header */}
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div
+              className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl text-3xl"
+              style={{ backgroundColor: (typedFolder.color ?? '#6C5CE7') + '20' }}
+            >
+              {typedFolder.icon ?? '📁'}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-[#2D3436]">{typedFolder.name}</h1>
+              {typedFolder.description && (
+                <p className="mt-0.5 text-sm text-[#636E72]">{typedFolder.description}</p>
+              )}
+              <p className="mt-1 text-xs text-[#B2BEC3]">
+                {typedVideos.length} link{typedVideos.length !== 1 ? 's' : ''}
+                {typedSubfolders.length > 0 &&
+                  ` · ${typedSubfolders.length} subfolder${typedSubfolders.length !== 1 ? 's' : ''}`}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-shrink-0 items-center gap-2">
+            <NewFolderModal userId={user.id} parentId={id} />
+            <AddVideoModal folderId={id} userId={user.id} />
+          </div>
+        </div>
+
+        {/* Subfolders */}
+        {typedSubfolders.length > 0 && (
+          <section className="mb-8">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#B2BEC3]">
+              Folders
+            </h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {typedSubfolders.map((sub) => (
+                <Link
+                  key={sub.id}
+                  href={`/folder/${sub.id}`}
+                  className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition hover:shadow-md"
+                >
+                  <div
+                    className="h-1.5 w-full"
+                    style={{ backgroundColor: sub.color ?? '#6C5CE7' }}
+                  />
+                  <div className="flex flex-1 flex-col p-3">
+                    <div className="mb-1.5 text-xl">{sub.icon ?? '📁'}</div>
+                    <h3 className="text-xs font-semibold leading-tight text-[#2D3436]">
+                      {sub.name}
+                    </h3>
+                    {sub.description && (
+                      <p className="mt-0.5 line-clamp-1 text-xs text-[#636E72]">
+                        {sub.description}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Videos / Links */}
+        <section>
+          {typedVideos.length > 0 ? (
+            <>
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#B2BEC3]">
+                Links
+              </h2>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {typedVideos.map((video) => {
+                  const color = PLATFORM_COLORS[video.platform] ?? '#636E72';
+                  const label = PLATFORM_LABELS[video.platform] ?? 'Link';
+                  const duration = formatDuration(video.duration);
+                  return (
+                    <a
+                      key={video.id}
+                      href={video.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition hover:shadow-md"
+                    >
+                      {/* Thumbnail */}
+                      <div className="relative h-40 w-full bg-[#F0EDFF]">
+                        {video.thumbnailUrl ? (
+                          <img
+                            src={video.thumbnailUrl}
+                            alt={video.title ?? ''}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div
+                            className="flex h-full w-full items-center justify-center text-4xl opacity-20"
+                            style={{ color }}
+                          >
+                            ▶
+                          </div>
+                        )}
+                        {/* Platform badge */}
+                        <span
+                          className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-xs font-semibold text-white"
+                          style={{ backgroundColor: color }}
+                        >
+                          {label}
+                        </span>
+                        {/* Duration */}
+                        {duration && (
+                          <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-1.5 py-0.5 text-xs font-medium text-white">
+                            {duration}
+                          </span>
+                        )}
+                      </div>
+                      {/* Info */}
+                      <div className="flex flex-1 flex-col p-3">
+                        <p className="line-clamp-2 text-sm font-semibold leading-tight text-[#2D3436]">
+                          {video.title || video.url}
+                        </p>
+                        {video.authorName && (
+                          <p className="mt-0.5 text-xs text-[#636E72]">{video.authorName}</p>
+                        )}
+                        {video.notes && (
+                          <p className="mt-1.5 line-clamp-2 text-xs text-[#636E72] italic">
+                            {video.notes}
+                          </p>
+                        )}
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            </>
+          ) : typedSubfolders.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl bg-white py-16 shadow-sm">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#F0EDFF]">
+                <span className="text-3xl">🔗</span>
+              </div>
+              <h2 className="mb-1.5 text-base font-semibold text-[#2D3436]">No links yet</h2>
+              <p className="mb-5 max-w-xs text-center text-sm text-[#636E72]">
+                Paste any YouTube, TikTok, Instagram, or other social media URL to save it here.
+              </p>
+              <AddVideoModal folderId={id} userId={user.id} />
+            </div>
+          ) : null}
+        </section>
+      </main>
+    </div>
+  );
+}
