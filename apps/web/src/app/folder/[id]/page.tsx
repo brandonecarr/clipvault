@@ -241,6 +241,7 @@ export default async function FolderPage({
                     video={video}
                     platformColor={PLATFORM_COLORS[video.platform] ?? '#636E72'}
                     platformLabel={PLATFORM_LABELS[video.platform] ?? 'Link'}
+                    userId={user.id}
                   />
                 ))}
               </div>

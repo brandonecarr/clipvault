@@ -11,6 +11,9 @@ const COLOR_PRESETS = [
   '#00B894', '#E17055', '#74B9FF', '#A29BFE',
 ];
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
+
 interface FolderCardProps {
   id: string;
   name: string;
@@ -91,6 +94,17 @@ export function FolderCard({
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setEditError('Only JPEG, PNG, WebP, and GIF images are allowed.');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      setEditError('Image must be smaller than 5 MB.');
+      e.target.value = '';
+      return;
+    }
+    setEditError('');
     setEditIconFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setEditIconPreview(ev.target?.result as string);
@@ -123,7 +137,7 @@ export function FolderCard({
     }
 
     const updates: Record<string, unknown> = {
-      name: editName.trim(),
+      name: editName.trim().slice(0, 100),
       color: editColor,
     };
     if (iconValue !== undefined) {
@@ -138,7 +152,8 @@ export function FolderCard({
     const { error: dbError } = await supabase
       .from('Folder')
       .update(updates)
-      .eq('id', id);
+      .eq('id', id)
+      .eq('"userId"', userId);
 
     if (dbError) {
       setEditError(dbError.message);
@@ -153,7 +168,13 @@ export function FolderCard({
   async function handleDelete() {
     setDeleting(true);
     const supabase = createClient();
-    await supabase.from('Folder').delete().eq('id', id);
+    await supabase.from('Folder').delete().eq('id', id).eq('"userId"', userId);
+    // Fire-and-forget audit log
+    fetch('/api/audit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'DELETE_FOLDER', folderId: id, folderName: name }),
+    }).catch(() => {});
     router.refresh();
   }
 
@@ -270,6 +291,7 @@ export function FolderCard({
                 <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)]">Name</label>
                 <input
                   autoFocus
+                  maxLength={100}
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
@@ -331,7 +353,7 @@ export function FolderCard({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
                     className="hidden"
                     onChange={handleFileChange}
                   />

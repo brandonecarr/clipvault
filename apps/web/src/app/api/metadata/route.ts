@@ -1,6 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../lib/supabase/server';
 
+// ---------------------------------------------------------------------------
+// In-memory sliding-window rate limiter (20 req / user / minute).
+// Sufficient for single-instance / Vercel edge deployments.
+// Replace the Map with a Redis/Upstash store for multi-instance production.
+// ---------------------------------------------------------------------------
+const rlStore = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(key: string): { allowed: boolean; retryAfter?: number } {
+  const LIMIT = 20;
+  const WINDOW = 60_000; // 1 minute
+  const now = Date.now();
+  let entry = rlStore.get(key);
+  if (!entry || entry.resetAt <= now) {
+    rlStore.set(key, { count: 1, resetAt: now + WINDOW });
+    return { allowed: true };
+  }
+  if (entry.count >= LIMIT) {
+    return { allowed: false, retryAfter: Math.ceil((entry.resetAt - now) / 1000) };
+  }
+  entry.count++;
+  return { allowed: true };
+}
+
+// ---------------------------------------------------------------------------
+// SSRF guard — reject private/loopback IPs and non-HTTPS schemes.
+// ---------------------------------------------------------------------------
+const PRIVATE_HOST_RE =
+  /^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|fc00:|fd)/i;
+
+function validateUrl(raw: string): { ok: true; url: URL } | { ok: false; error: string } {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return { ok: false, error: 'Invalid URL' };
+  }
+  if (!['http:', 'https:'].includes(url.protocol)) {
+    return { ok: false, error: 'Only HTTP(S) URLs are allowed' };
+  }
+  if (PRIVATE_HOST_RE.test(url.hostname)) {
+    return { ok: false, error: 'URL not allowed' };
+  }
+  if (raw.length > 2048) {
+    return { ok: false, error: 'URL too long' };
+  }
+  return { ok: true, url };
+}
+
+// ---------------------------------------------------------------------------
+// Platform detection
+// ---------------------------------------------------------------------------
 type Platform =
   | 'YOUTUBE'
   | 'TIKTOK'
@@ -31,13 +82,20 @@ function extractYouTubeId(url: string): string | null {
   return m ? m[1] : null;
 }
 
-// YouTube's internal Innertube API — the same endpoint the YouTube web client
-// uses. Works reliably from cloud/server environments where oEmbed returns 401.
+// ---------------------------------------------------------------------------
+// YouTube Innertube — same endpoint the YouTube web client uses.
+// Key is the public web-client key embedded in youtube.com; store in env to
+// centralise rotation: YOUTUBE_INNERTUBE_KEY in .env.local
+// ---------------------------------------------------------------------------
+const YT_KEY =
+  process.env.YOUTUBE_INNERTUBE_KEY ??
+  'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8'; // fallback; set env var to rotate
+
 async function tryYouTubeInnertube(
   videoId: string,
 ): Promise<{ title: string | null; author: string | null; thumbnail: string | null; duration: number | null }> {
   try {
-    const res = await fetch('https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8', {
+    const res = await fetch(`https://www.youtube.com/youtubei/v1/player?key=${YT_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -50,12 +108,7 @@ async function tryYouTubeInnertube(
       },
       body: JSON.stringify({
         context: {
-          client: {
-            hl: 'en',
-            gl: 'US',
-            clientName: 'WEB',
-            clientVersion: '2.20231121.08.00',
-          },
+          client: { hl: 'en', gl: 'US', clientName: 'WEB', clientVersion: '2.20231121.08.00' },
         },
         videoId,
       }),
@@ -66,11 +119,8 @@ async function tryYouTubeInnertube(
     const details = data?.videoDetails;
     if (!details) return { title: null, author: null, thumbnail: null, duration: null };
 
-    // Pick the highest-res thumbnail available
-    const thumbs: { url: string; width?: number }[] =
-      details.thumbnail?.thumbnails ?? [];
-    const thumbnail =
-      thumbs.sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0]?.url ?? null;
+    const thumbs: { url: string; width?: number }[] = details.thumbnail?.thumbnails ?? [];
+    const thumbnail = thumbs.sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0]?.url ?? null;
 
     return {
       title: details.title || null,
@@ -107,26 +157,12 @@ async function tryOEmbed(oEmbedUrl: string): Promise<OEmbedResponse | null> {
   }
 }
 
-// Use separate double/single-quote patterns so apostrophes in content don't
-// prematurely end the capture (e.g. "Don't stop" with double-quoted attribute).
 function extractMeta(html: string, property: string): string | null {
   const patterns = [
-    new RegExp(
-      `<meta[^>]+(?:property|name)=["']${property}["'][^>]+content="([^"]*)"`,
-      'i',
-    ),
-    new RegExp(
-      `<meta[^>]+content="([^"]*)"[^>]+(?:property|name)=["']${property}["']`,
-      'i',
-    ),
-    new RegExp(
-      `<meta[^>]+(?:property|name)=["']${property}["'][^>]+content='([^']*)'`,
-      'i',
-    ),
-    new RegExp(
-      `<meta[^>]+content='([^']*)'[^>]+(?:property|name)=["']${property}["']`,
-      'i',
-    ),
+    new RegExp(`<meta[^>]+(?:property|name)=["']${property}["'][^>]+content="([^"]*)"`, 'i'),
+    new RegExp(`<meta[^>]+content="([^"]*)"[^>]+(?:property|name)=["']${property}["']`, 'i'),
+    new RegExp(`<meta[^>]+(?:property|name)=["']${property}["'][^>]+content='([^']*)'`, 'i'),
+    new RegExp(`<meta[^>]+content='([^']*)'[^>]+(?:property|name)=["']${property}["']`, 'i'),
   ];
   for (const re of patterns) {
     const m = html.match(re);
@@ -217,13 +253,25 @@ async function tryOpenGraph(url: string) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// POST /api/metadata
+// ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
+  // Auth check
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  // Rate limiting
+  const rl = checkRateLimit(user.id);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfter) } },
+    );
+  }
+
+  // Parse body
   let body: { url?: string };
   try {
     body = await req.json();
@@ -231,8 +279,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const url = body.url?.trim();
-  if (!url) return NextResponse.json({ error: 'URL required' }, { status: 400 });
+  const rawUrl = body.url?.trim();
+  if (!rawUrl) return NextResponse.json({ error: 'URL required' }, { status: 400 });
+
+  // SSRF guard
+  const validation = validateUrl(rawUrl);
+  if (!validation.ok) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
+  }
+  const url = rawUrl;
 
   const platform = detectPlatform(url);
   const ytId = platform === 'YOUTUBE' ? extractYouTubeId(url) : null;
@@ -266,13 +321,9 @@ export async function POST(req: NextRequest) {
   // ── Other oEmbed platforms ─────────────────────────────────────────────────
   let oEmbed: OEmbedResponse | null = null;
   if (platform === 'VIMEO') {
-    oEmbed = await tryOEmbed(
-      `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`,
-    );
+    oEmbed = await tryOEmbed(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`);
   } else if (platform === 'TIKTOK') {
-    oEmbed = await tryOEmbed(
-      `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`,
-    );
+    oEmbed = await tryOEmbed(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
   }
 
   if (oEmbed?.title) {

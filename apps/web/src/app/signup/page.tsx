@@ -20,6 +20,15 @@ export default function SignupPage() {
       setError('App is not yet configured. Please check back soon.');
       return;
     }
+    // Client-side password complexity check (server enforces minimum length via Supabase settings)
+    if (password.length < 12) {
+      setError('Password must be at least 12 characters.');
+      return;
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      setError('Password must include uppercase, lowercase, and a number.');
+      return;
+    }
     setError('');
     setLoading(true);
 
@@ -150,11 +159,11 @@ export default function SignupPage() {
                 type="password"
                 autoComplete="new-password"
                 required
-                minLength={8}
+                minLength={12}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-xl border border-[#E0E0E0] bg-[#F8F9FA] px-4 py-3 text-sm text-[#2D3436] outline-none transition focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
-                placeholder="At least 8 characters"
+                placeholder="12+ chars, uppercase, lowercase, number"
               />
             </div>
 

@@ -9,6 +9,9 @@ const COLOR_PRESETS = [
   '#00B894', '#E17055', '#74B9FF', '#A29BFE',
 ];
 
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
+
 interface NewFolderModalProps {
   userId: string;
   parentId?: string | null;
@@ -39,6 +42,17 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      setError('Only JPEG, PNG, WebP, and GIF images are allowed.');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      setError('Image must be smaller than 5 MB.');
+      e.target.value = '';
+      return;
+    }
+    setError('');
     setIconFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setIconPreview(ev.target?.result as string);
@@ -155,6 +169,7 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
                 <input
                   autoFocus
                   required
+                  maxLength={100}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="My Folder"
@@ -217,7 +232,7 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
                     className="hidden"
                     onChange={handleFileChange}
                   />
@@ -234,6 +249,7 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="What goes in this folder?"
                   rows={2}
+                  maxLength={500}
                   className="w-full resize-none rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
                 />
               </div>

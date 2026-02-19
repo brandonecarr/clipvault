@@ -21,6 +21,7 @@ interface VideoCardProps {
   video: Video;
   platformColor: string;
   platformLabel: string;
+  userId: string;
 }
 
 function formatDuration(seconds: number | null): string | null {
@@ -49,7 +50,7 @@ function getEmbedUrl(url: string, platform: string): string | null {
   return null;
 }
 
-export function VideoCard({ video, platformColor, platformLabel }: VideoCardProps) {
+export function VideoCard({ video, platformColor, platformLabel, userId }: VideoCardProps) {
   const [playerOpen, setPlayerOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -121,7 +122,13 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
   async function handleDelete() {
     setDeleting(true);
     const supabase = createClient();
-    await supabase.from('Video').delete().eq('id', video.id);
+    await supabase.from('Video').delete().eq('id', video.id).eq('"userId"', userId);
+    // Fire-and-forget audit log
+    fetch('/api/audit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'DELETE_VIDEO', videoId: video.id, title: video.title }),
+    }).catch(() => {});
     router.refresh();
   }
 
