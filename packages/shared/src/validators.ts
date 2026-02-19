@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import {
-  MAX_FOLDER_DEPTH,
   MAX_FOLDER_NAME_LENGTH,
   MAX_TAG_LENGTH,
   MAX_VIDEO_NOTES_LENGTH,
