@@ -37,7 +37,7 @@ async function tryYouTubeInnertube(
   videoId: string,
 ): Promise<{ title: string | null; author: string | null; thumbnail: string | null }> {
   try {
-    const res = await fetch('https://www.youtube.com/youtubei/v1/player', {
+    const res = await fetch('https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
