@@ -161,11 +161,11 @@ export function FolderCard({
     <>
       {/* Card wrapper */}
       <div
-        className="group relative overflow-hidden rounded-3xl ring-1 ring-white/10 transition duration-300 hover:scale-[1.01]"
+        className="folder-card group relative overflow-hidden rounded-3xl ring-1 ring-white/10 transition duration-300 hover:scale-[1.01]"
         style={{
           background: `linear-gradient(to top, ${color}00, ${color}20), #0f172a`,
-          boxShadow: `0 10px 40px -10px ${color}60`,
-        }}
+          '--folder-color': color,
+        } as React.CSSProperties}
       >
         {/* Full-card link (below buttons in z-order) */}
         <Link

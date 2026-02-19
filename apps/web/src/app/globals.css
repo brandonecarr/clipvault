@@ -52,3 +52,11 @@ body {
   from { opacity: 0; transform: scale(0.95); }
   to   { opacity: 1; transform: scale(1); }
 }
+
+/* Folder card glow — toned down in dark mode so adjacent cards don't clash */
+.folder-card {
+  box-shadow: 0 10px 40px -10px color-mix(in srgb, var(--folder-color) 38%, transparent);
+}
+.dark .folder-card {
+  box-shadow: 0 4px 18px -4px color-mix(in srgb, var(--folder-color) 16%, transparent);
+}
