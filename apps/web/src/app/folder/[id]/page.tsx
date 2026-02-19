@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { createClient } from '../../../lib/supabase/server';
 import { NewFolderModal } from '../../../components/NewFolderModal';
 import { AddVideoModal } from '../../../components/AddVideoModal';
+import { FolderThumbnails } from '../../../components/FolderThumbnails';
 
 const PLATFORM_LABELS: Record<string, string> = {
   YOUTUBE: 'YouTube',
@@ -101,10 +102,26 @@ export default async function FolderPage({
   ]);
 
   const parentFolder = parentResult.data as { id: string; name: string } | null;
-
   const typedFolder = folder as Folder;
   const typedVideos = (videos ?? []) as Video[];
   const typedSubfolders = (subfolders ?? []) as Folder[];
+
+  // Fetch up to 4 thumbnails per subfolder in one query
+  const subfolderIds = typedSubfolders.map((s) => s.id);
+  const subThumbsByFolder: Record<string, string[]> = {};
+  if (subfolderIds.length > 0) {
+    const { data: subThumbRows } = await supabase
+      .from('Video')
+      .select('"folderId", "thumbnailUrl"')
+      .in('"folderId"', subfolderIds)
+      .not('"thumbnailUrl"', 'is', null)
+      .order('"createdAt"', { ascending: false });
+    for (const row of subThumbRows ?? []) {
+      const r = row as { folderId: string; thumbnailUrl: string };
+      if (!subThumbsByFolder[r.folderId]) subThumbsByFolder[r.folderId] = [];
+      if (subThumbsByFolder[r.folderId].length < 4) subThumbsByFolder[r.folderId].push(r.thumbnailUrl);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
@@ -188,46 +205,36 @@ export default async function FolderPage({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {typedSubfolders.map((sub) => {
                 const subColor = sub.color ?? '#6C5CE7';
+                const subThumbs = subThumbsByFolder[sub.id] ?? [];
                 return (
                   <Link
                     key={sub.id}
                     href={`/folder/${sub.id}`}
-                    className="group relative overflow-hidden rounded-3xl ring-1 ring-white/10 transition duration-300 hover:scale-[1.01]"
-                    style={{
-                      background: `linear-gradient(to top, ${subColor}00, ${subColor}22)`,
-                      boxShadow: `0 10px 40px -10px ${subColor}59`,
-                    }}
+                    className="group overflow-hidden rounded-2xl bg-slate-900 transition duration-300 hover:scale-[1.01]"
+                    style={{ boxShadow: `0 8px 32px -8px ${subColor}50` }}
                   >
                     <div
-                      className="flex"
+                      className="flex h-24"
                       style={{
-                        background: `radial-gradient(circle at bottom left, ${subColor}33, transparent)`,
+                        background: `radial-gradient(circle at bottom left, ${subColor}22, transparent)`,
                       }}
                     >
-                      <div
-                        className="relative flex w-[44%] items-center justify-center py-6"
-                        style={{
-                          background: `linear-gradient(135deg, ${subColor}40, ${subColor}10)`,
-                        }}
-                      >
-                        <span className="text-4xl drop-shadow-lg">{sub.icon ?? '📁'}</span>
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0B0B0F] via-transparent to-transparent opacity-40" />
+                      <div className="relative w-[44%] shrink-0 overflow-hidden">
+                        <FolderThumbnails
+                          thumbs={subThumbs}
+                          icon={sub.icon ?? '📁'}
+                          color={subColor}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20" />
                       </div>
-                      <div
-                        className="w-[56%] px-4 py-4"
-                        style={{
-                          background: `radial-gradient(circle at bottom left, ${subColor}30, transparent)`,
-                        }}
-                      >
+                      <div className="flex min-w-0 flex-col justify-center px-4">
                         <h3 className="line-clamp-1 text-sm font-semibold tracking-tight text-white">
                           {sub.name}
                         </h3>
-                        {sub.description ? (
-                          <p className="mt-1 line-clamp-2 text-xs text-slate-300">
+                        {sub.description && (
+                          <p className="mt-0.5 line-clamp-1 text-xs text-white/50">
                             {sub.description}
                           </p>
-                        ) : (
-                          <p className="mt-1 text-xs text-slate-500">No description</p>
                         )}
                       </div>
                     </div>
