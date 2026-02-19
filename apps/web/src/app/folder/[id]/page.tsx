@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { createClient } from '../../../lib/supabase/server';
 import { NewFolderModal } from '../../../components/NewFolderModal';
 import { AddVideoModal } from '../../../components/AddVideoModal';
-import { FolderThumbnails } from '../../../components/FolderThumbnails';
+import { FolderCard } from '../../../components/FolderCard';
 import { VideoCard } from '../../../components/VideoCard';
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -98,20 +98,24 @@ export default async function FolderPage({
   const typedVideos = (videos ?? []) as Video[];
   const typedSubfolders = (subfolders ?? []) as Folder[];
 
-  // Fetch up to 4 thumbnails per subfolder in one query
+  // Fetch all videos per subfolder for stats (count, total duration, last added, thumbnails)
   const subfolderIds = typedSubfolders.map((s) => s.id);
-  const subThumbsByFolder: Record<string, string[]> = {};
+  interface SubFolderStats { thumbs: string[]; count: number; totalDuration: number; lastAdded: string | null; }
+  const subStatsByFolder: Record<string, SubFolderStats> = {};
   if (subfolderIds.length > 0) {
-    const { data: subThumbRows } = await supabase
+    const { data: subVideoRows } = await supabase
       .from('Video')
-      .select('"folderId", "thumbnailUrl"')
+      .select('"folderId", "thumbnailUrl", duration, "createdAt"')
       .in('"folderId"', subfolderIds)
-      .not('"thumbnailUrl"', 'is', null)
       .order('"createdAt"', { ascending: false });
-    for (const row of subThumbRows ?? []) {
-      const r = row as { folderId: string; thumbnailUrl: string };
-      if (!subThumbsByFolder[r.folderId]) subThumbsByFolder[r.folderId] = [];
-      if (subThumbsByFolder[r.folderId].length < 4) subThumbsByFolder[r.folderId].push(r.thumbnailUrl);
+    for (const row of subVideoRows ?? []) {
+      const r = row as { folderId: string; thumbnailUrl: string | null; duration: number | null; createdAt: string };
+      if (!subStatsByFolder[r.folderId]) subStatsByFolder[r.folderId] = { thumbs: [], count: 0, totalDuration: 0, lastAdded: null };
+      const s = subStatsByFolder[r.folderId];
+      s.count++;
+      if (r.duration) s.totalDuration += r.duration;
+      if (r.thumbnailUrl && s.thumbs.length < 4) s.thumbs.push(r.thumbnailUrl);
+      if (!s.lastAdded || r.createdAt > s.lastAdded) s.lastAdded = r.createdAt;
     }
   }
 
@@ -196,41 +200,20 @@ export default async function FolderPage({
             </h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {typedSubfolders.map((sub) => {
-                const subColor = sub.color ?? '#6C5CE7';
-                const subThumbs = subThumbsByFolder[sub.id] ?? [];
+                const stats = subStatsByFolder[sub.id] ?? { thumbs: [], count: 0, totalDuration: 0, lastAdded: null };
                 return (
-                  <Link
+                  <FolderCard
                     key={sub.id}
-                    href={`/folder/${sub.id}`}
-                    className="group overflow-hidden rounded-2xl bg-slate-900 transition duration-300 hover:scale-[1.01]"
-                    style={{ boxShadow: `0 8px 32px -8px ${subColor}50` }}
-                  >
-                    <div
-                      className="flex h-24"
-                      style={{
-                        background: `radial-gradient(circle at bottom left, ${subColor}22, transparent)`,
-                      }}
-                    >
-                      <div className="relative w-[44%] shrink-0 overflow-hidden">
-                        <FolderThumbnails
-                          thumbs={subThumbs}
-                          icon={sub.icon ?? '📁'}
-                          color={subColor}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20" />
-                      </div>
-                      <div className="flex min-w-0 flex-col justify-center px-4">
-                        <h3 className="line-clamp-1 text-sm font-semibold tracking-tight text-white">
-                          {sub.name}
-                        </h3>
-                        {sub.description && (
-                          <p className="mt-0.5 line-clamp-1 text-xs text-white/50">
-                            {sub.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
+                    id={sub.id}
+                    name={sub.name}
+                    color={sub.color ?? '#6C5CE7'}
+                    icon={sub.icon ?? '📁'}
+                    description={sub.description}
+                    thumbs={stats.thumbs}
+                    videoCount={stats.count}
+                    totalDuration={stats.totalDuration}
+                    lastAdded={stats.lastAdded}
+                  />
                 );
               })}
             </div>

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '../../lib/supabase/server';
 import { NewFolderModal } from '../../components/NewFolderModal';
-import { FolderThumbnails } from '../../components/FolderThumbnails';
+import { FolderCard } from '../../components/FolderCard';
 
 interface Folder {
   id: string;
@@ -31,20 +31,24 @@ export default async function LibraryPage() {
     .is('"parentId"', null)
     .order('"sortOrder"', { ascending: true });
 
-  // Fetch up to 4 thumbnails per folder in one query
+  // Fetch all videos per folder for stats (count, total duration, last added, thumbnails)
   const folderIds = (folders ?? []).map((f: Folder) => f.id);
-  const thumbsByFolder: Record<string, string[]> = {};
+  interface FolderStats { thumbs: string[]; count: number; totalDuration: number; lastAdded: string | null; }
+  const statsByFolder: Record<string, FolderStats> = {};
   if (folderIds.length > 0) {
-    const { data: thumbRows } = await supabase
+    const { data: videoRows } = await supabase
       .from('Video')
-      .select('"folderId", "thumbnailUrl"')
+      .select('"folderId", "thumbnailUrl", duration, "createdAt"')
       .in('"folderId"', folderIds)
-      .not('"thumbnailUrl"', 'is', null)
       .order('"createdAt"', { ascending: false });
-    for (const row of thumbRows ?? []) {
-      const r = row as { folderId: string; thumbnailUrl: string };
-      if (!thumbsByFolder[r.folderId]) thumbsByFolder[r.folderId] = [];
-      if (thumbsByFolder[r.folderId].length < 4) thumbsByFolder[r.folderId].push(r.thumbnailUrl);
+    for (const row of videoRows ?? []) {
+      const r = row as { folderId: string; thumbnailUrl: string | null; duration: number | null; createdAt: string };
+      if (!statsByFolder[r.folderId]) statsByFolder[r.folderId] = { thumbs: [], count: 0, totalDuration: 0, lastAdded: null };
+      const s = statsByFolder[r.folderId];
+      s.count++;
+      if (r.duration) s.totalDuration += r.duration;
+      if (r.thumbnailUrl && s.thumbs.length < 4) s.thumbs.push(r.thumbnailUrl);
+      if (!s.lastAdded || r.createdAt > s.lastAdded) s.lastAdded = r.createdAt;
     }
   }
 
@@ -90,44 +94,20 @@ export default async function LibraryPage() {
         {folders && folders.length > 0 ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {folders.map((folder: Folder) => {
-              const color = folder.color ?? '#6C5CE7';
-              const thumbs = thumbsByFolder[folder.id] ?? [];
+              const stats = statsByFolder[folder.id] ?? { thumbs: [], count: 0, totalDuration: 0, lastAdded: null };
               return (
-                <Link
+                <FolderCard
                   key={folder.id}
-                  href={`/folder/${folder.id}`}
-                  className="group overflow-hidden rounded-2xl bg-slate-900 transition duration-300 hover:scale-[1.01]"
-                  style={{ boxShadow: `0 8px 32px -8px ${color}50` }}
-                >
-                  <div
-                    className="flex h-24"
-                    style={{
-                      background: `radial-gradient(circle at bottom left, ${color}22, transparent)`,
-                    }}
-                  >
-                    {/* Left: thumbnail grid */}
-                    <div className="relative w-[44%] shrink-0 overflow-hidden">
-                      <FolderThumbnails
-                        thumbs={thumbs}
-                        icon={folder.icon ?? '📁'}
-                        color={color}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20" />
-                    </div>
-
-                    {/* Right: info */}
-                    <div className="flex min-w-0 flex-col justify-center px-4">
-                      <h3 className="line-clamp-1 text-sm font-semibold tracking-tight text-white">
-                        {folder.name}
-                      </h3>
-                      {folder.description && (
-                        <p className="mt-0.5 line-clamp-1 text-xs text-white/50">
-                          {folder.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </Link>
+                  id={folder.id}
+                  name={folder.name}
+                  color={folder.color ?? '#6C5CE7'}
+                  icon={folder.icon ?? '📁'}
+                  description={folder.description}
+                  thumbs={stats.thumbs}
+                  videoCount={stats.count}
+                  totalDuration={stats.totalDuration}
+                  lastAdded={stats.lastAdded}
+                />
               );
             })}
           </div>
