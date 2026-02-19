@@ -72,8 +72,8 @@ export function AddVideoModal({ folderId, userId }: AddVideoModalProps) {
     setSaveError('');
   }
 
-  async function handleFetch() {
-    const trimmed = url.trim();
+  async function fetchMetadata(rawUrl: string) {
+    const trimmed = rawUrl.trim();
     if (!trimmed) return;
     setFetching(true);
     setFetchError('');
@@ -95,6 +95,17 @@ export function AddVideoModal({ folderId, userId }: AddVideoModalProps) {
       setFetchError('Failed to reach server');
     } finally {
       setFetching(false);
+    }
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData('text').trim();
+    if (pasted) {
+      setUrl(pasted);
+      setMetadata(null);
+      setFetchError('');
+      fetchMetadata(pasted);
+      e.preventDefault();
     }
   }
 
@@ -166,7 +177,7 @@ export function AddVideoModal({ folderId, userId }: AddVideoModalProps) {
               {/* URL input */}
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[#636E72]">URL</label>
-                <div className="flex gap-2">
+                <div className="relative">
                   <input
                     autoFocus
                     value={url}
@@ -175,18 +186,15 @@ export function AddVideoModal({ folderId, userId }: AddVideoModalProps) {
                       setMetadata(null);
                       setFetchError('');
                     }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleFetch()}
-                    placeholder="https://youtube.com/watch?v=…"
-                    className="flex-1 rounded-xl border border-[#E0E0E0] bg-[#F8F9FA] px-4 py-2.5 text-sm text-[#2D3436] outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
+                    onPaste={handlePaste}
+                    placeholder="Paste a link…"
+                    className="w-full rounded-xl border border-[#E0E0E0] bg-[#F8F9FA] px-4 py-2.5 pr-10 text-sm text-[#2D3436] outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
                   />
-                  <button
-                    type="button"
-                    onClick={handleFetch}
-                    disabled={fetching || !url.trim()}
-                    className="rounded-xl bg-[#F0EDFF] px-4 py-2.5 text-sm font-semibold text-[#6C5CE7] transition hover:bg-[#6C5CE7]/20 disabled:opacity-50"
-                  >
-                    {fetching ? '…' : 'Fetch'}
-                  </button>
+                  {fetching && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#6C5CE7] border-t-transparent" />
+                    </div>
+                  )}
                 </div>
                 {fetchError && (
                   <p className="mt-1.5 text-xs text-red-500">{fetchError}</p>
