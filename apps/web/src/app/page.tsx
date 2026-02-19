@@ -2,10 +2,12 @@ import Link from 'next/link';
 import { createClient } from '../lib/supabase/server';
 
 export default async function Home() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-[#F8F9FA] px-6">
