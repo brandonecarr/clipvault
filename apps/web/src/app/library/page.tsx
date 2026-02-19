@@ -70,31 +70,60 @@ export default async function LibraryPage() {
         </div>
 
         {folders && folders.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {folders.map((folder: Folder) => (
-              <Link
-                key={folder.id}
-                href={`/folder/${folder.id}`}
-                className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition hover:shadow-md"
-              >
-                {/* Color bar */}
-                <div
-                  className="h-2 w-full"
-                  style={{ backgroundColor: folder.color || '#6C5CE7' }}
-                />
-                <div className="flex flex-1 flex-col p-4">
-                  <div className="mb-2 text-2xl">{folder.icon || '📁'}</div>
-                  <h3 className="text-sm font-semibold leading-tight text-[#2D3436]">
-                    {folder.name}
-                  </h3>
-                  {folder.description && (
-                    <p className="mt-1 line-clamp-2 text-xs text-[#636E72]">
-                      {folder.description}
-                    </p>
-                  )}
-                </div>
-              </Link>
-            ))}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {folders.map((folder: Folder) => {
+              const color = folder.color ?? '#6C5CE7';
+              return (
+                <Link
+                  key={folder.id}
+                  href={`/folder/${folder.id}`}
+                  className="group relative overflow-hidden rounded-3xl ring-1 ring-white/10 transition duration-300 hover:scale-[1.01]"
+                  style={{
+                    background: `linear-gradient(to top, ${color}00, ${color}22)`,
+                    boxShadow: `0 10px 40px -10px ${color}59`,
+                  }}
+                >
+                  <div
+                    className="flex"
+                    style={{
+                      background: `radial-gradient(circle at bottom left, ${color}33, transparent)`,
+                    }}
+                  >
+                    {/* Left: icon area */}
+                    <div
+                      className="relative flex w-[44%] items-center justify-center py-8"
+                      style={{
+                        background: `linear-gradient(135deg, ${color}40, ${color}10)`,
+                      }}
+                    >
+                      <span className="text-5xl drop-shadow-lg">{folder.icon ?? '📁'}</span>
+                      <div
+                        className="absolute inset-0 bg-gradient-to-t from-[#0B0B0F] via-transparent to-transparent opacity-40"
+                      />
+                    </div>
+
+                    {/* Right: info */}
+                    <div
+                      className="w-[56%] px-4 py-4"
+                      style={{
+                        background: `radial-gradient(circle at bottom left, ${color}30, transparent)`,
+                      }}
+                    >
+                      <h3 className="line-clamp-1 text-base font-semibold tracking-tight text-white">
+                        {folder.name}
+                      </h3>
+                      {folder.description ? (
+                        <p className="mt-1 line-clamp-2 text-xs text-slate-300">
+                          {folder.description}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-xs text-slate-500">No description</p>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center rounded-2xl bg-white py-20 shadow-sm">

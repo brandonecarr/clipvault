@@ -185,30 +185,55 @@ export default async function FolderPage({
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#B2BEC3]">
               Folders
             </h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {typedSubfolders.map((sub) => (
-                <Link
-                  key={sub.id}
-                  href={`/folder/${sub.id}`}
-                  className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition hover:shadow-md"
-                >
-                  <div
-                    className="h-1.5 w-full"
-                    style={{ backgroundColor: sub.color ?? '#6C5CE7' }}
-                  />
-                  <div className="flex flex-1 flex-col p-3">
-                    <div className="mb-1.5 text-xl">{sub.icon ?? '📁'}</div>
-                    <h3 className="text-xs font-semibold leading-tight text-[#2D3436]">
-                      {sub.name}
-                    </h3>
-                    {sub.description && (
-                      <p className="mt-0.5 line-clamp-1 text-xs text-[#636E72]">
-                        {sub.description}
-                      </p>
-                    )}
-                  </div>
-                </Link>
-              ))}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {typedSubfolders.map((sub) => {
+                const subColor = sub.color ?? '#6C5CE7';
+                return (
+                  <Link
+                    key={sub.id}
+                    href={`/folder/${sub.id}`}
+                    className="group relative overflow-hidden rounded-3xl ring-1 ring-white/10 transition duration-300 hover:scale-[1.01]"
+                    style={{
+                      background: `linear-gradient(to top, ${subColor}00, ${subColor}22)`,
+                      boxShadow: `0 10px 40px -10px ${subColor}59`,
+                    }}
+                  >
+                    <div
+                      className="flex"
+                      style={{
+                        background: `radial-gradient(circle at bottom left, ${subColor}33, transparent)`,
+                      }}
+                    >
+                      <div
+                        className="relative flex w-[44%] items-center justify-center py-6"
+                        style={{
+                          background: `linear-gradient(135deg, ${subColor}40, ${subColor}10)`,
+                        }}
+                      >
+                        <span className="text-4xl drop-shadow-lg">{sub.icon ?? '📁'}</span>
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0B0B0F] via-transparent to-transparent opacity-40" />
+                      </div>
+                      <div
+                        className="w-[56%] px-4 py-4"
+                        style={{
+                          background: `radial-gradient(circle at bottom left, ${subColor}30, transparent)`,
+                        }}
+                      >
+                        <h3 className="line-clamp-1 text-sm font-semibold tracking-tight text-white">
+                          {sub.name}
+                        </h3>
+                        {sub.description ? (
+                          <p className="mt-1 line-clamp-2 text-xs text-slate-300">
+                            {sub.description}
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-xs text-slate-500">No description</p>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </section>
         )}
