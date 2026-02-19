@@ -56,15 +56,14 @@ export function FolderCard({
         boxShadow: `0 10px 40px -10px ${color}60`,
       }}
     >
-      {/* min-h-[150px] here ensures FolderThumbnails h-full has a parent height to fill */}
       <div
-        className="flex min-h-[150px]"
+        className="flex h-[150px]"
         style={{
           background: `radial-gradient(circle at bottom left, ${color}28, transparent)`,
         }}
       >
-        {/* Left: thumbnail */}
-        <div className="relative w-[44%] shrink-0 overflow-hidden">
+        {/* Left: thumbnail — h-full resolves against the explicit h-[150px] parent */}
+        <div className="relative h-full w-[44%] shrink-0 overflow-hidden">
           <FolderThumbnails thumbs={thumbs} icon={icon} color={color} />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0B0B0F] via-transparent to-transparent opacity-60" />
           {durStr && (
