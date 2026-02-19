@@ -49,53 +49,48 @@ export function FolderCard({
   return (
     <Link
       href={`/folder/${id}`}
-      className="group overflow-hidden rounded-2xl bg-slate-900 transition duration-300 hover:scale-[1.01]"
-      style={{ boxShadow: `0 8px 32px -8px ${color}50` }}
+      className="relative overflow-hidden rounded-3xl ring-1 ring-white/10 transition duration-300 hover:scale-[1.01]"
+      style={{
+        background: `linear-gradient(to top, ${color}00, ${color}20)`,
+        boxShadow: `0 10px 40px -10px ${color}60`,
+      }}
     >
-      <div className="flex h-[110px]">
-        {/* Left: thumbnail grid */}
-        <div className="relative w-[38%] shrink-0 overflow-hidden">
+      <div
+        className="flex"
+        style={{
+          background: `radial-gradient(circle at bottom left, ${color}30, transparent)`,
+        }}
+      >
+        {/* Left: thumbnail */}
+        <div className="relative w-[44%] shrink-0 overflow-hidden" style={{ minHeight: '150px' }}>
           <FolderThumbnails thumbs={thumbs} icon={icon} color={color} />
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/25" />
-          {/* Total duration badge */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0B0B0F] via-transparent to-transparent opacity-60" />
           {durStr && (
-            <div className="absolute right-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white backdrop-blur-sm">
+            <span className="absolute right-2 top-2 rounded-md bg-black/60 px-2 py-1 text-[11px] text-white">
               {durStr}
-            </div>
+            </span>
           )}
         </div>
 
         {/* Right: info */}
         <div
-          className="flex min-w-0 flex-col justify-between px-4 py-3"
+          className="w-[56%] min-w-0 px-4 py-4"
           style={{
-            background: `radial-gradient(circle at bottom left, ${color}18, transparent)`,
+            background: `radial-gradient(circle at bottom left, ${color}50, ${color}00)`,
           }}
         >
-          {/* Name + description */}
-          <div className="min-w-0">
-            <h3 className="line-clamp-2 text-[15px] font-bold leading-tight tracking-tight text-white">
-              {name}
-            </h3>
-            {description && (
-              <p className="mt-1 line-clamp-1 text-[10px] font-semibold uppercase tracking-widest text-white/40">
-                {description}
-              </p>
-            )}
-          </div>
-
-          {/* Stats row */}
-          <div className="flex items-center gap-1.5 text-[11px] text-white/40">
-            <span>
-              {videoCount} {videoCount === 1 ? 'video' : 'videos'}
-            </span>
-            {lastAdded && (
-              <>
-                <span className="text-white/20">—</span>
-                <span>Last added {timeAgo(lastAdded)}</span>
-              </>
-            )}
-          </div>
+          <h3 className="line-clamp-2 text-[16px] font-semibold tracking-tight text-white">
+            {name}
+          </h3>
+          {description && (
+            <p className="mt-1 line-clamp-1 text-[11px] uppercase tracking-wide text-slate-400">
+              {description}
+            </p>
+          )}
+          <p className="mt-2 text-[12px] text-slate-300">
+            {videoCount} {videoCount === 1 ? 'video' : 'videos'}
+            {lastAdded && ` — Last added ${timeAgo(lastAdded)}`}
+          </p>
         </div>
       </div>
     </Link>

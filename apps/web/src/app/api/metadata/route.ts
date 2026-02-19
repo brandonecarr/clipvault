@@ -35,7 +35,7 @@ function extractYouTubeId(url: string): string | null {
 // uses. Works reliably from cloud/server environments where oEmbed returns 401.
 async function tryYouTubeInnertube(
   videoId: string,
-): Promise<{ title: string | null; author: string | null; thumbnail: string | null }> {
+): Promise<{ title: string | null; author: string | null; thumbnail: string | null; duration: number | null }> {
   try {
     const res = await fetch('https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8', {
       method: 'POST',
@@ -61,10 +61,10 @@ async function tryYouTubeInnertube(
       }),
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return { title: null, author: null, thumbnail: null };
+    if (!res.ok) return { title: null, author: null, thumbnail: null, duration: null };
     const data = await res.json();
     const details = data?.videoDetails;
-    if (!details) return { title: null, author: null, thumbnail: null };
+    if (!details) return { title: null, author: null, thumbnail: null, duration: null };
 
     // Pick the highest-res thumbnail available
     const thumbs: { url: string; width?: number }[] =
@@ -76,9 +76,10 @@ async function tryYouTubeInnertube(
       title: details.title || null,
       author: details.author || null,
       thumbnail,
+      duration: details.lengthSeconds ? parseInt(details.lengthSeconds, 10) : null,
     };
   } catch {
-    return { title: null, author: null, thumbnail: null };
+    return { title: null, author: null, thumbnail: null, duration: null };
   }
 }
 
@@ -256,7 +257,7 @@ export async function POST(req: NextRequest) {
       title,
       description: null,
       thumbnailUrl: thumbnail,
-      duration: oEmbed?.duration ?? null,
+      duration: innertube.duration ?? oEmbed?.duration ?? null,
       authorName: innertube.author || oEmbed?.author_name || null,
       authorUrl: oEmbed?.author_url || null,
     });

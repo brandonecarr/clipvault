@@ -63,9 +63,11 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
   const router = useRouter();
   const fetchedRef = useRef(false);
 
-  // If the video was saved without a title, fetch it now and patch the DB record.
+  // If the video was saved without a title or duration, fetch metadata and patch the DB record.
   useEffect(() => {
-    if (resolvedTitle || fetchedRef.current) return;
+    const needsTitle = !resolvedTitle;
+    const needsDuration = video.duration === null;
+    if ((!needsTitle && !needsDuration) || fetchedRef.current) return;
     fetchedRef.current = true;
     fetch('/api/metadata', {
       method: 'POST',
@@ -74,19 +76,22 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
     })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data?.title) {
+        if (!data) return;
+        const updates: Record<string, unknown> = {};
+        if (needsTitle && data.title) {
           setResolvedTitle(data.title);
           setEditTitle(data.title);
-          // Persist to DB so refresh doesn't re-fetch
-          createClient()
-            .from('Video')
-            .update({ title: data.title })
-            .eq('id', video.id)
-            .then(() => {});
+          updates.title = data.title;
+        }
+        if (needsDuration && data.duration) {
+          updates.duration = data.duration;
+        }
+        if (Object.keys(updates).length > 0) {
+          createClient().from('Video').update(updates).eq('id', video.id).then(() => {});
         }
       })
       .catch(() => {});
-  }, [video.id, video.url, resolvedTitle]);
+  }, [video.id, video.url, resolvedTitle, video.duration]);
 
   const duration = formatDuration(video.duration);
   const embedUrl = getEmbedUrl(video.url, video.platform);
