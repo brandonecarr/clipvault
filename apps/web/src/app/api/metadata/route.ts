@@ -88,8 +88,7 @@ function extractTitle(html: string): string | null {
   return m ? m[1].trim() : null;
 }
 
-// Extract title from JSON-LD structured data — more reliable than og:title
-// for sites like YouTube that embed rich metadata as machine-readable JSON.
+// Extract title from JSON-LD structured data.
 function extractJsonLdTitle(html: string): string | null {
   const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   let match;
@@ -103,10 +102,39 @@ function extractJsonLdTitle(html: string): string | null {
   return null;
 }
 
+// YouTube embeds video details in ytInitialPlayerResponse inside the page HTML.
+// The pattern "videoId":"...","title":"..." is reliable across YouTube layouts.
+function extractYouTubePageTitle(html: string): string | null {
+  // ytInitialPlayerResponse.videoDetails.title
+  const m = html.match(/"videoId"\s*:\s*"[A-Za-z0-9_-]{11}"\s*,\s*"title"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (m) {
+    return m[1]
+      .replace(/\\u([\da-f]{4})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+      .replace(/\\n/g, ' ')
+      .replace(/\\\\/g, '\\')
+      .replace(/\\"/g, '"')
+      .trim();
+  }
+  return null;
+}
+
+// Decode common HTML entities in scraped text (e.g. &amp; → &).
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)));
+}
+
 // Strip trailing " - YouTube", " | YouTube", etc. from scraped page titles.
 function cleanTitle(raw: string | null | undefined): string | null {
   if (!raw) return null;
-  return raw.replace(/\s*[-–|]\s*(YouTube|TikTok|Instagram|Vimeo|Reddit)\s*$/i, '').trim() || null;
+  const decoded = decodeHtmlEntities(raw);
+  return decoded.replace(/\s*[-–|]\s*(YouTube|TikTok|Instagram|Vimeo|Reddit)\s*$/i, '').trim() || null;
 }
 
 async function tryOpenGraph(url: string) {
@@ -125,11 +153,19 @@ async function tryOpenGraph(url: string) {
     if (!res.ok) return null;
     const html = await res.text();
 
-    // Title priority: og:title → twitter:title → JSON-LD → <title>
+    // Title priority:
+    //   og:title            — standard OG tag
+    //   twitter:title       — Twitter card fallback
+    //   name="title"        — YouTube uses <meta name="title"> (NOT og:title)
+    //   JSON-LD             — structured data blocks
+    //   ytInitialPlayerResponse — YouTube page-embedded video details JSON
+    //   <title>             — last-resort page title (will strip " - YouTube" suffix)
     const rawTitle =
       extractMeta(html, 'og:title') ||
       extractMeta(html, 'twitter:title') ||
+      extractMeta(html, 'title') ||
       extractJsonLdTitle(html) ||
+      extractYouTubePageTitle(html) ||
       extractTitle(html);
 
     return {
@@ -170,8 +206,6 @@ export async function POST(req: NextRequest) {
   let oEmbed: OEmbedResponse | null = null;
 
   if (platform === 'YOUTUBE') {
-    // Use the canonical youtu.be URL format for the oEmbed call — more
-    // reliable than the full watch?v= form with extra parameters like &t=1s
     const canonicalUrl = ytId
       ? `https://www.youtube.com/watch?v=${ytId}`
       : url;
@@ -210,7 +244,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Fall back to Open Graph + JSON-LD scraping.
+  // Fall back to Open Graph + page scraping (includes YouTube-specific extractors).
   const og = await tryOpenGraph(url);
 
   const thumbnail =
