@@ -134,7 +134,7 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
           <img
             src={video.thumbnailUrl}
             alt={video.title ?? ''}
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 scale-[1.35] group-hover:scale-[1.4]"
           />
         ) : (
           <div className="absolute inset-0" style={{ backgroundColor: platformColor + '30' }} />
