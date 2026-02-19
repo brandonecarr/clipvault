@@ -1,4 +1,12 @@
-export default function Home() {
+import Link from 'next/link';
+import { createClient } from '../lib/supabase/server';
+
+export default async function Home() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-[#F8F9FA] px-6">
       <div className="text-center max-w-xl">
@@ -12,22 +20,33 @@ export default function Home() {
           Save, organize, and revisit your favorite social media videos.
         </p>
         <p className="mb-10 text-base text-[#636E72]">
-          The web app is coming soon. Download the mobile app to get started.
+          YouTube, TikTok, Instagram, Facebook, Pinterest, Reddit — all in one place.
         </p>
 
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <a
-            href="#"
-            className="inline-flex h-12 items-center gap-2 rounded-full bg-[#6C5CE7] px-6 text-sm font-semibold text-white transition hover:bg-[#5849C8]"
-          >
-            📱 Download for iOS
-          </a>
-          <a
-            href="#"
-            className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-[#6C5CE7] px-6 text-sm font-semibold text-[#6C5CE7] transition hover:bg-[#F0EDFF]"
-          >
-            🤖 Download for Android
-          </a>
+          {user ? (
+            <Link
+              href="/library"
+              className="inline-flex h-12 items-center gap-2 rounded-full bg-[#6C5CE7] px-8 text-sm font-semibold text-white transition hover:bg-[#5849C8]"
+            >
+              Open My Library →
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/signup"
+                className="inline-flex h-12 items-center gap-2 rounded-full bg-[#6C5CE7] px-8 text-sm font-semibold text-white transition hover:bg-[#5849C8]"
+              >
+                Get Started — it&apos;s free
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-[#6C5CE7] px-8 text-sm font-semibold text-[#6C5CE7] transition hover:bg-[#F0EDFF]"
+              >
+                Sign In
+              </Link>
+            </>
+          )}
         </div>
 
         <div className="mt-16 grid grid-cols-3 gap-6 text-center">
