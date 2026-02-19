@@ -8,7 +8,7 @@ interface Folder {
   color: string | null;
   icon: string | null;
   description: string | null;
-  created_at: string;
+  createdAt: string;
 }
 
 const COLOR_PRESETS: Record<string, string> = {
@@ -34,11 +34,11 @@ export default async function LibraryPage() {
   }
 
   const { data: folders } = await supabase
-    .from('folders')
-    .select('id, name, color, icon, description, created_at')
-    .eq('user_id', user.id)
-    .is('parent_id', null)
-    .order('sort_order', { ascending: true });
+    .from('Folder')
+    .select('id, name, color, icon, description, "createdAt"')
+    .eq('"userId"', user.id)
+    .is('"parentId"', null)
+    .order('"sortOrder"', { ascending: true });
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]">
