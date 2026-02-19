@@ -68,11 +68,8 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
 
   return (
     <>
-      {/* Card */}
-      <div
-        className="group relative aspect-[3/4] cursor-pointer overflow-hidden rounded-3xl shadow-[0_2.8px_2.2px_rgba(0,0,0,0.034),0_6.7px_5.3px_rgba(0,0,0,0.048),0_12.5px_10px_rgba(0,0,0,0.06),0_22.3px_17.9px_rgba(0,0,0,0.072),0_41.8px_33.4px_rgba(0,0,0,0.086),0_100px_80px_rgba(0,0,0,0.12)] transition-transform duration-300 hover:scale-[1.02]"
-        onClick={() => window.open(video.url, '_blank', 'noopener,noreferrer')}
-      >
+      {/* Card — outer div is just the container/shape, not clickable itself */}
+      <div className="group relative aspect-[3/4] overflow-hidden rounded-3xl shadow-[0_2.8px_2.2px_rgba(0,0,0,0.034),0_6.7px_5.3px_rgba(0,0,0,0.048),0_12.5px_10px_rgba(0,0,0,0.06),0_22.3px_17.9px_rgba(0,0,0,0.072),0_41.8px_33.4px_rgba(0,0,0,0.086),0_100px_80px_rgba(0,0,0,0.12)] transition-transform duration-300 hover:scale-[1.02]">
         {/* Background image */}
         {video.thumbnailUrl ? (
           <img
@@ -87,8 +84,21 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
-        {/* Top-left: platform + author + notes */}
-        <div className="absolute left-4 top-4 text-white">
+        {/*
+          Full-card link — sits here in DOM order (after bg layers, before action buttons).
+          Buttons come later in DOM so they're stacked on top and intercept clicks first,
+          meaning the link never fires when a button is clicked — no stopPropagation needed.
+        */}
+        <a
+          href={video.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute inset-0"
+          aria-label={video.title ?? 'Open video'}
+        />
+
+        {/* Top-left: platform + author + notes (pointer-events-none so clicks fall through to the link) */}
+        <div className="pointer-events-none absolute left-4 top-4 text-white">
           <div className="mb-2 flex items-center gap-2">
             <span
               className="rounded-full px-2 py-0.5 text-xs font-semibold text-white"
@@ -107,12 +117,15 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
           )}
         </div>
 
-        {/* Top-right: action buttons (edit/delete appear on hover, play always visible) */}
+        {/*
+          Top-right: action buttons — come AFTER the <a> in DOM so they're on top of it.
+          Clicks on these buttons never reach the link below.
+        */}
         <div className="absolute right-4 top-4 flex items-center gap-1.5">
           {/* Edit */}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
+            type="button"
+            onClick={() => {
               setEditTitle(video.title ?? '');
               setEditNotes(video.notes ?? '');
               setError('');
@@ -128,10 +141,8 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
           </button>
           {/* Delete */}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setConfirmDelete(true);
-            }}
+            type="button"
+            onClick={() => setConfirmDelete(true)}
             className="rounded-full bg-white/20 p-2 opacity-0 backdrop-blur-sm transition-all group-hover:opacity-100 hover:bg-red-500/70"
             title="Delete"
           >
@@ -142,16 +153,16 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
               <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
             </svg>
           </button>
-          {/* Play */}
-          <div className="rounded-full bg-white/20 p-2 backdrop-blur-sm transition-colors group-hover:bg-white/30">
+          {/* Play (visual indicator only) */}
+          <div className="pointer-events-none rounded-full bg-white/20 p-2 backdrop-blur-sm transition-colors group-hover:bg-white/30">
             <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
               <path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" />
             </svg>
           </div>
         </div>
 
-        {/* Bottom: title + duration */}
-        <div className="absolute bottom-4 left-4 right-4">
+        {/* Bottom: title + duration (pointer-events-none, visual only) */}
+        <div className="pointer-events-none absolute bottom-4 left-4 right-4">
           <div className="rounded-xl bg-white/10 p-3 backdrop-blur-sm">
             <div className="flex items-start justify-between gap-2 text-white">
               <span className="line-clamp-2 text-sm font-medium leading-tight">
@@ -172,7 +183,7 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
 
         {/* No-thumbnail fallback icon */}
         {!video.thumbnailUrl && (
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <svg className="h-16 w-16 opacity-10" style={{ color: platformColor }} viewBox="0 0 24 24" fill="currentColor">
               <path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" />
             </svg>
@@ -192,7 +203,7 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
           >
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-lg font-bold text-[#2D3436]">Edit Link</h2>
-              <button onClick={() => setEditing(false)} className="text-xl leading-none text-[#636E72] hover:text-[#2D3436]">×</button>
+              <button type="button" onClick={() => setEditing(false)} className="text-xl leading-none text-[#636E72] hover:text-[#2D3436]">×</button>
             </div>
 
             <div className="space-y-4">
@@ -223,12 +234,14 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
 
               <div className="flex gap-3 pt-1">
                 <button
+                  type="button"
                   onClick={() => setEditing(false)}
                   className="flex-1 rounded-xl border border-[#E0E0E0] py-2.5 text-sm font-medium text-[#636E72] transition hover:bg-[#F8F9FA]"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleSaveEdit}
                   disabled={saving}
                   className="flex-1 rounded-xl bg-[#6C5CE7] py-2.5 text-sm font-semibold text-white transition hover:bg-[#5849C8] disabled:opacity-60"
@@ -252,17 +265,17 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="mb-1 text-base font-bold text-[#2D3436]">Delete link?</h2>
-            <p className="mb-5 text-sm text-[#636E72]">
-              {video.title || video.url}
-            </p>
+            <p className="mb-5 text-sm text-[#636E72]">{video.title || video.url}</p>
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => setConfirmDelete(false)}
                 className="flex-1 rounded-xl border border-[#E0E0E0] py-2.5 text-sm font-medium text-[#636E72] transition hover:bg-[#F8F9FA]"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleDelete}
                 disabled={deleting}
                 className="flex-1 rounded-xl bg-red-500 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-60"
