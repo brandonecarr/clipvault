@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../lib/supabase/client';
+import { VideoPlayerModal } from './VideoPlayerModal';
 
 interface Video {
   id: string;
@@ -30,7 +31,25 @@ function formatDuration(seconds: number | null): string | null {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+// Returns an embeddable iframe URL for supported platforms, null otherwise.
+function getEmbedUrl(url: string, platform: string): string | null {
+  if (platform === 'YOUTUBE') {
+    const m = url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([A-Za-z0-9_-]{11})/);
+    return m ? `https://www.youtube.com/embed/${m[1]}?autoplay=1&rel=0` : null;
+  }
+  if (platform === 'VIMEO') {
+    const m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+    return m ? `https://player.vimeo.com/video/${m[1]}?autoplay=1` : null;
+  }
+  if (platform === 'TIKTOK') {
+    const m = url.match(/tiktok\.com\/@[^/]+\/video\/(\d+)/);
+    return m ? `https://www.tiktok.com/embed/v2/${m[1]}` : null;
+  }
+  return null;
+}
+
 export function VideoCard({ video, platformColor, platformLabel }: VideoCardProps) {
+  const [playerOpen, setPlayerOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editTitle, setEditTitle] = useState(video.title ?? '');
@@ -40,6 +59,7 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
   const [error, setError] = useState('');
   const router = useRouter();
   const duration = formatDuration(video.duration);
+  const embedUrl = getEmbedUrl(video.url, video.platform);
 
   async function handleSaveEdit() {
     setSaving(true);
@@ -68,7 +88,7 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
 
   return (
     <>
-      {/* Card — outer div is just the container/shape, not clickable itself */}
+      {/* Card */}
       <div className="group relative aspect-[3/4] overflow-hidden rounded-3xl shadow-[0_2.8px_2.2px_rgba(0,0,0,0.034),0_6.7px_5.3px_rgba(0,0,0,0.048),0_12.5px_10px_rgba(0,0,0,0.06),0_22.3px_17.9px_rgba(0,0,0,0.072),0_41.8px_33.4px_rgba(0,0,0,0.086),0_100px_80px_rgba(0,0,0,0.12)] transition-transform duration-300 hover:scale-[1.02]">
         {/* Background image */}
         {video.thumbnailUrl ? (
@@ -85,9 +105,11 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
         {/*
-          Full-card link — sits here in DOM order (after bg layers, before action buttons).
-          Buttons come later in DOM so they're stacked on top and intercept clicks first,
-          meaning the link never fires when a button is clicked — no stopPropagation needed.
+          Full-card link / play trigger.
+          - If the platform is embeddable: intercept click → open player modal.
+          - Otherwise: behaves as a normal link (open in new tab).
+          The action buttons come after this in DOM order so they sit on top
+          and intercept clicks first — no stopPropagation needed on the buttons.
         */}
         <a
           href={video.url}
@@ -95,6 +117,14 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
           rel="noopener noreferrer"
           className="absolute inset-0"
           aria-label={video.title ?? 'Open video'}
+          onClick={
+            embedUrl
+              ? (e) => {
+                  e.preventDefault();
+                  setPlayerOpen(true);
+                }
+              : undefined
+          }
         />
 
         {/* Top-left: platform + author + notes (pointer-events-none so clicks fall through to the link) */}
@@ -118,8 +148,8 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
         </div>
 
         {/*
-          Top-right: action buttons — come AFTER the <a> in DOM so they're on top of it.
-          Clicks on these buttons never reach the link below.
+          Top-right: action buttons + play indicator.
+          Come AFTER the <a> in DOM → sit on top → clicks never reach the link.
         */}
         <div className="absolute right-4 top-4 flex items-center gap-1.5">
           {/* Edit */}
@@ -153,7 +183,7 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
               <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
             </svg>
           </button>
-          {/* Play (visual indicator only) */}
+          {/* Play indicator (visual only) */}
           <div className="pointer-events-none rounded-full bg-white/20 p-2 backdrop-blur-sm transition-colors group-hover:bg-white/30">
             <svg className="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor">
               <path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" />
@@ -191,6 +221,20 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
         )}
       </div>
 
+      {/* Video player modal (YouTube / Vimeo / TikTok) */}
+      {playerOpen && embedUrl && (
+        <VideoPlayerModal
+          embedUrl={embedUrl}
+          title={video.title}
+          url={video.url}
+          platformColor={platformColor}
+          platformLabel={platformLabel}
+          authorName={video.authorName}
+          aspectRatio={video.platform === 'TIKTOK' ? 'portrait' : 'landscape'}
+          onClose={() => setPlayerOpen(false)}
+        />
+      )}
+
       {/* Edit modal */}
       {editing && (
         <div
@@ -205,7 +249,6 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
               <h2 className="text-lg font-bold text-[#2D3436]">Edit Link</h2>
               <button type="button" onClick={() => setEditing(false)} className="text-xl leading-none text-[#636E72] hover:text-[#2D3436]">×</button>
             </div>
-
             <div className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[#636E72]">Title</label>
@@ -229,23 +272,14 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
                   className="w-full resize-none rounded-xl border border-[#E0E0E0] bg-[#F8F9FA] px-4 py-2.5 text-sm text-[#2D3436] outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
                 />
               </div>
-
               {error && <p className="rounded-lg bg-red-50 px-4 py-2 text-xs text-red-600">{error}</p>}
-
               <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setEditing(false)}
-                  className="flex-1 rounded-xl border border-[#E0E0E0] py-2.5 text-sm font-medium text-[#636E72] transition hover:bg-[#F8F9FA]"
-                >
+                <button type="button" onClick={() => setEditing(false)}
+                  className="flex-1 rounded-xl border border-[#E0E0E0] py-2.5 text-sm font-medium text-[#636E72] transition hover:bg-[#F8F9FA]">
                   Cancel
                 </button>
-                <button
-                  type="button"
-                  onClick={handleSaveEdit}
-                  disabled={saving}
-                  className="flex-1 rounded-xl bg-[#6C5CE7] py-2.5 text-sm font-semibold text-white transition hover:bg-[#5849C8] disabled:opacity-60"
-                >
+                <button type="button" onClick={handleSaveEdit} disabled={saving}
+                  className="flex-1 rounded-xl bg-[#6C5CE7] py-2.5 text-sm font-semibold text-white transition hover:bg-[#5849C8] disabled:opacity-60">
                   {saving ? 'Saving…' : 'Save'}
                 </button>
               </div>
@@ -267,19 +301,12 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
             <h2 className="mb-1 text-base font-bold text-[#2D3436]">Delete link?</h2>
             <p className="mb-5 text-sm text-[#636E72]">{video.title || video.url}</p>
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(false)}
-                className="flex-1 rounded-xl border border-[#E0E0E0] py-2.5 text-sm font-medium text-[#636E72] transition hover:bg-[#F8F9FA]"
-              >
+              <button type="button" onClick={() => setConfirmDelete(false)}
+                className="flex-1 rounded-xl border border-[#E0E0E0] py-2.5 text-sm font-medium text-[#636E72] transition hover:bg-[#F8F9FA]">
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 rounded-xl bg-red-500 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-60"
-              >
+              <button type="button" onClick={handleDelete} disabled={deleting}
+                className="flex-1 rounded-xl bg-red-500 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-60">
                 {deleting ? 'Deleting…' : 'Delete'}
               </button>
             </div>
