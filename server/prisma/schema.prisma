@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  displayName String?
+  avatarUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  folders     Folder[]
+  videos      Video[]
+  tags        Tag[]
+}
+
+model Folder {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  color       String?  // hex color e.g. "#6C5CE7"
+  icon        String?  // emoji e.g. "🏠"
+  parentId    String?  // null = root folder
+  parent      Folder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Folder[] @relation("FolderHierarchy")
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videos      Video[]
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId, parentId])
+  @@index([userId, sortOrder])
+}
+
+model Video {
+  id            String   @id @default(uuid())
+  url           String
+  platform      Platform
+  title         String?
+  description   String?
+  thumbnailUrl  String?  // cached thumbnail in Supabase Storage
+  originalThumb String?  // original thumbnail URL from platform
+  duration      Int?     // seconds
+  authorName    String?
+  authorUrl     String?
+  notes         String?
+  folderId      String
+  folder        Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tags          Tag[]    @relation("VideoTags")
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, url])
+  @@index([userId, folderId])
+  @@index([platform])
+  @@index([userId, createdAt])
+}
+
+model Tag {
+  id     String  @id @default(uuid())
+  name   String
+  userId String
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videos Video[] @relation("VideoTags")
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+enum Platform {
+  YOUTUBE
+  TIKTOK
+  INSTAGRAM
+  FACEBOOK
+  PINTEREST
+  X_TWITTER
+  VIMEO
+  REDDIT
+  OTHER
+}
