@@ -1,18 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../lib/supabase/client';
 
 const COLOR_PRESETS = [
   '#6C5CE7', '#00CEC9', '#FD79A8', '#FDCB6E',
   '#00B894', '#E17055', '#74B9FF', '#A29BFE',
-];
-
-const EMOJI_PRESETS = [
-  '📁', '🎬', '🎵', '📚', '🏋️', '🎮',
-  '✈️', '🍕', '💡', '❤️', '⭐', '🔥',
-  '🎯', '🎨', '📸', '🎤', '🏆', '🌟',
 ];
 
 interface NewFolderModalProps {
@@ -24,10 +18,12 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [color, setColor] = useState('#6C5CE7');
-  const [icon, setIcon] = useState('📁');
   const [description, setDescription] = useState('');
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   function handleClose() {
@@ -35,8 +31,18 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
     setName('');
     setDescription('');
     setColor('#6C5CE7');
-    setIcon('📁');
+    setIconFile(null);
+    setIconPreview(null);
     setError('');
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIconFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setIconPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -46,10 +52,30 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
     setError('');
 
     const supabase = createClient();
+    let iconValue: string | null = null;
+
+    // Upload cover photo if provided
+    if (iconFile) {
+      const ext = iconFile.name.split('.').pop() ?? 'jpg';
+      const path = `folder-icons/${userId}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('thumbnails')
+        .upload(path, iconFile, { contentType: iconFile.type, upsert: false });
+
+      if (uploadError) {
+        setError(`Photo upload failed: ${uploadError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage.from('thumbnails').getPublicUrl(path);
+      iconValue = urlData.publicUrl;
+    }
+
     const { error: dbError } = await supabase.from('Folder').insert({
       name: name.trim(),
       color,
-      icon,
+      icon: iconValue,
       description: description.trim() || null,
       userId,
       parentId: parentId ?? null,
@@ -98,10 +124,20 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
               {/* Live preview */}
               <div className="flex items-center gap-3 rounded-xl bg-[#F8F9FA] p-3">
                 <div
-                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl text-2xl"
-                  style={{ backgroundColor: color + '20', border: `2px solid ${color}` }}
+                  className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl"
+                  style={
+                    iconPreview
+                      ? undefined
+                      : { backgroundColor: color + '20', border: `2px solid ${color}` }
+                  }
                 >
-                  {icon}
+                  {iconPreview ? (
+                    <img src={iconPreview} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <svg className="h-5 w-5" style={{ color }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                    </svg>
+                  )}
                 </div>
                 <div className="min-w-0">
                   <div className="truncate font-semibold text-[#2D3436]">
@@ -115,9 +151,7 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
 
               {/* Name */}
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[#636E72]">
-                  Name
-                </label>
+                <label className="mb-1.5 block text-xs font-medium text-[#636E72]">Name</label>
                 <input
                   autoFocus
                   required
@@ -130,9 +164,7 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
 
               {/* Color */}
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[#636E72]">
-                  Color
-                </label>
+                <label className="mb-1.5 block text-xs font-medium text-[#636E72]">Color</label>
                 <div className="flex gap-2">
                   {COLOR_PRESETS.map((c) => (
                     <button
@@ -150,24 +182,45 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
                 </div>
               </div>
 
-              {/* Icon */}
+              {/* Cover photo */}
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-[#636E72]">
-                  Icon
+                  Cover Photo <span className="text-[#B2BEC3]">(optional)</span>
                 </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {EMOJI_PRESETS.map((e) => (
+                <div className="flex items-center gap-3">
+                  {iconPreview && (
+                    <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl">
+                      <img src={iconPreview} alt="" className="h-full w-full object-cover" />
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-[#E0E0E0] px-4 py-3 text-sm text-[#636E72] transition hover:border-[#6C5CE7] hover:text-[#6C5CE7]"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    {iconPreview ? 'Change photo' : 'Upload photo'}
+                  </button>
+                  {iconPreview && (
                     <button
-                      key={e}
                       type="button"
-                      onClick={() => setIcon(e)}
-                      className={`h-9 w-9 rounded-lg text-xl transition hover:bg-[#F0EDFF] ${
-                        icon === e ? 'bg-[#F0EDFF] ring-2 ring-[#6C5CE7]' : 'bg-[#F8F9FA]'
-                      }`}
+                      onClick={() => { setIconFile(null); setIconPreview(null); }}
+                      className="text-xs text-red-400 transition hover:text-red-600"
                     >
-                      {e}
+                      Remove
                     </button>
-                  ))}
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
                 </div>
               </div>
 

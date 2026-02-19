@@ -21,12 +21,18 @@ function Cell({ src, className }: { src: string; className?: string }) {
 
 export function FolderThumbnails({ thumbs, icon, color }: FolderThumbnailsProps) {
   if (thumbs.length === 0) {
+    // icon may be a URL (uploaded photo) or null (no icon set)
+    if (icon && icon.startsWith('http')) {
+      return <Cell src={icon} className="h-full w-full" />;
+    }
     return (
       <div
         className="flex h-full w-full items-center justify-center"
         style={{ background: `linear-gradient(145deg, ${color}60, ${color}20)` }}
       >
-        <span className="text-4xl">{icon}</span>
+        <svg className="h-10 w-10 opacity-60" style={{ color }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+        </svg>
       </div>
     );
   }
