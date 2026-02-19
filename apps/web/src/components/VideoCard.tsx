@@ -14,6 +14,7 @@ interface Video {
   duration: number | null;
   authorName: string | null;
   notes: string | null;
+  createdAt: string;
 }
 
 interface VideoCardProps {
@@ -235,6 +236,9 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
           platformColor={platformColor}
           platformLabel={platformLabel}
           authorName={video.authorName}
+          duration={video.duration}
+          notes={video.notes}
+          createdAt={video.createdAt}
           aspectRatio={video.platform === 'TIKTOK' ? 'portrait' : 'landscape'}
           onClose={() => setPlayerOpen(false)}
         />
