@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '../../lib/supabase/client';
+import { createClient, isSupabaseConfigured } from '../../lib/supabase/client';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -12,8 +12,7 @@ export default function SignupPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [done, setDone] = useState(false);
 
-  const supabaseConfigured =
-    !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseConfigured = isSupabaseConfigured;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
