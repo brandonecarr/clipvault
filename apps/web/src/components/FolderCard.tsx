@@ -62,9 +62,12 @@ export function FolderCard({
           background: `radial-gradient(circle at bottom left, ${color}28, transparent)`,
         }}
       >
-        {/* Left: thumbnail — h-full resolves against the explicit h-[150px] parent */}
+        {/* Left: thumbnail */}
         <div className="relative h-full w-[44%] shrink-0 overflow-hidden">
-          <FolderThumbnails thumbs={thumbs} icon={icon} color={color} />
+          {/* absolute inset-0 gives FolderThumbnails a definitive box to fill */}
+          <div className="absolute inset-0">
+            <FolderThumbnails thumbs={thumbs} icon={icon} color={color} />
+          </div>
           <div className="absolute inset-0 bg-gradient-to-t from-[#0B0B0F] via-transparent to-transparent opacity-60" />
           {durStr && (
             <span className="absolute right-2 top-2 rounded-md bg-black/60 px-2 py-1 text-[11px] text-white">
