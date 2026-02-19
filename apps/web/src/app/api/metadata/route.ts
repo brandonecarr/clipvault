@@ -158,35 +158,42 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (oEmbed) {
-    // oEmbed succeeded — use its data, with YouTube thumbnail fallback
+  // If oEmbed returned a non-empty title, use it straight away.
+  // If the title is missing/empty, still fall through to OG scraping so
+  // we have a second chance to get the title from the page itself.
+  if (oEmbed && oEmbed.title) {
     const thumbnail =
-      oEmbed.thumbnail_url ??
+      oEmbed.thumbnail_url ||
       (ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : null);
     return NextResponse.json({
       platform,
-      title: oEmbed.title ?? null,
+      title: cleanTitle(oEmbed.title) || oEmbed.title, // prefer cleaned; fallback to raw
       description: null,
       thumbnailUrl: thumbnail,
       duration: oEmbed.duration ?? null,
-      authorName: oEmbed.author_name ?? null,
-      authorUrl: oEmbed.author_url ?? null,
+      authorName: oEmbed.author_name || null,
+      authorUrl: oEmbed.author_url || null,
     });
   }
 
-  // Fall back to Open Graph scraping
+  // Fall back to Open Graph scraping (also catches the "oEmbed worked but
+  // title was empty" case — OG may still have the title in <meta og:title>).
   const og = await tryOpenGraph(url);
-  // For YouTube, always guarantee a thumbnail via the known ytimg URL
+
+  // Prefer OG title; for YouTube/Vimeo/TikTok oEmbed may have author even
+  // when title was missing, so carry those through.
   const thumbnail =
-    og?.thumbnailUrl ?? (ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : null);
+    og?.thumbnailUrl ||
+    oEmbed?.thumbnail_url ||
+    (ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : null);
 
   return NextResponse.json({
     platform,
-    title: og?.title ?? null,
-    description: og?.description ?? null,
+    title: og?.title || null,
+    description: og?.description || null,
     thumbnailUrl: thumbnail,
-    duration: null,
-    authorName: null,
-    authorUrl: null,
+    duration: oEmbed?.duration ?? null,
+    authorName: oEmbed?.author_name || null,
+    authorUrl: oEmbed?.author_url || null,
   });
 }

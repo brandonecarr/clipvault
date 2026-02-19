@@ -60,6 +60,11 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
   const router = useRouter();
   const duration = formatDuration(video.duration);
   const embedUrl = getEmbedUrl(video.url, video.platform);
+  // Clean fallback: show hostname (e.g. "youtube.com") instead of the full URL
+  const displayTitle = video.title || (() => {
+    try { return new URL(video.url).hostname.replace(/^www\./, ''); }
+    catch { return platformLabel; }
+  })();
 
   async function handleSaveEdit() {
     setSaving(true);
@@ -196,7 +201,7 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
           <div className="rounded-xl bg-white/10 p-3 backdrop-blur-sm">
             <div className="flex items-start justify-between gap-2 text-white">
               <span className="line-clamp-2 text-sm font-medium leading-tight">
-                {video.title || video.url}
+                {displayTitle}
               </span>
               {duration && (
                 <span className="flex flex-shrink-0 items-center gap-1 text-xs opacity-80">
@@ -299,7 +304,7 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="mb-1 text-base font-bold text-[#2D3436]">Delete link?</h2>
-            <p className="mb-5 text-sm text-[#636E72]">{video.title || video.url}</p>
+            <p className="mb-5 text-sm text-[#636E72]">{displayTitle}</p>
             <div className="flex gap-3">
               <button type="button" onClick={() => setConfirmDelete(false)}
                 className="flex-1 rounded-xl border border-[#E0E0E0] py-2.5 text-sm font-medium text-[#636E72] transition hover:bg-[#F8F9FA]">
