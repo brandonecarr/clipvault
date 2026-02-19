@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../lib/supabase/client';
 import { VideoPlayerModal } from './VideoPlayerModal';
@@ -53,16 +53,44 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
   const [playerOpen, setPlayerOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // resolvedTitle starts as the DB value; auto-fetched if null
+  const [resolvedTitle, setResolvedTitle] = useState<string | null>(video.title);
   const [editTitle, setEditTitle] = useState(video.title ?? '');
   const [editNotes, setEditNotes] = useState(video.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const fetchedRef = useRef(false);
+
+  // If the video was saved without a title, fetch it now and patch the DB record.
+  useEffect(() => {
+    if (resolvedTitle || fetchedRef.current) return;
+    fetchedRef.current = true;
+    fetch('/api/metadata', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: video.url }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.title) {
+          setResolvedTitle(data.title);
+          setEditTitle(data.title);
+          // Persist to DB so refresh doesn't re-fetch
+          createClient()
+            .from('Video')
+            .update({ title: data.title })
+            .eq('id', video.id)
+            .then(() => {});
+        }
+      })
+      .catch(() => {});
+  }, [video.id, video.url, resolvedTitle]);
+
   const duration = formatDuration(video.duration);
   const embedUrl = getEmbedUrl(video.url, video.platform);
-  // Clean fallback: show hostname (e.g. "youtube.com") instead of the full URL
-  const displayTitle = video.title || (() => {
+  const displayTitle = resolvedTitle || (() => {
     try { return new URL(video.url).hostname.replace(/^www\./, ''); }
     catch { return platformLabel; }
   })();
