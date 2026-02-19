@@ -78,7 +78,7 @@ export function FolderCard({
     setEditName(name);
     setEditColor(color);
     setEditIconFile(null);
-    setEditIconPreview(null);
+    setEditIconPreview(icon?.startsWith('http') ? icon : null);
     setEditError('');
     setEditing(true);
   }
@@ -126,7 +126,14 @@ export function FolderCard({
       name: editName.trim(),
       color: editColor,
     };
-    if (iconValue !== undefined) updates.icon = iconValue;
+    if (iconValue !== undefined) {
+      // New file uploaded
+      updates.icon = iconValue;
+    } else if (editIconPreview === null && icon?.startsWith('http')) {
+      // User hit "Remove" to clear an existing photo
+      updates.icon = null;
+    }
+    // Otherwise: preview still shows the existing URL → don't touch icon
 
     const { error: dbError } = await supabase
       .from('Folder')
@@ -168,7 +175,7 @@ export function FolderCard({
         />
 
         <div
-          className="flex h-[150px]"
+          className="pointer-events-none flex h-[150px]"
           style={{
             background: `radial-gradient(circle at bottom left, ${color}28, transparent)`,
           }}
@@ -186,9 +193,9 @@ export function FolderCard({
             )}
           </div>
 
-          {/* Right: info */}
+          {/* Right: info — pointer-events-none so clicks fall through to the Link */}
           <div
-            className="relative z-10 flex w-[56%] min-w-0 flex-col justify-center px-4 py-4"
+            className="pointer-events-none flex w-[56%] min-w-0 flex-col justify-center px-4 py-4"
             style={{
               background: `radial-gradient(circle at bottom left, ${color}40, transparent)`,
             }}
@@ -208,8 +215,8 @@ export function FolderCard({
           </div>
         </div>
 
-        {/* Action buttons — sit above the Link */}
-        <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 opacity-0 transition-all group-hover:opacity-100">
+        {/* Action buttons — pointer-events-auto re-enables clicks; z-20 keeps them above everything */}
+        <div className="pointer-events-auto absolute right-3 top-3 z-20 flex items-center gap-1.5 opacity-0 transition-all group-hover:opacity-100">
           <button
             type="button"
             onClick={openEdit}
