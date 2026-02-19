@@ -140,8 +140,9 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
           <div className="absolute inset-0" style={{ backgroundColor: platformColor + '30' }} />
         )}
 
-        {/* Gradient overlay */}
+        {/* Vignette: dark fade from bottom (title) and top (badges) */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/5 to-transparent" />
 
         {/*
           Full-card link / play trigger.
