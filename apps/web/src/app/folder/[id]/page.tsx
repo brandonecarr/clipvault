@@ -198,7 +198,7 @@ export default async function FolderPage({
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#B2BEC3]">
               Folders
             </h2>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {typedSubfolders.map((sub) => {
                 const stats = subStatsByFolder[sub.id] ?? { thumbs: [], count: 0, totalDuration: 0, lastAdded: null };
                 return (

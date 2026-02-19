@@ -51,18 +51,20 @@ export function FolderCard({
       href={`/folder/${id}`}
       className="relative overflow-hidden rounded-3xl ring-1 ring-white/10 transition duration-300 hover:scale-[1.01]"
       style={{
-        background: `linear-gradient(to top, ${color}00, ${color}20)`,
+        // Stack gradient on top of solid dark base so card is always dark
+        background: `linear-gradient(to top, ${color}00, ${color}20), #0f172a`,
         boxShadow: `0 10px 40px -10px ${color}60`,
       }}
     >
+      {/* min-h-[150px] here ensures FolderThumbnails h-full has a parent height to fill */}
       <div
-        className="flex"
+        className="flex min-h-[150px]"
         style={{
-          background: `radial-gradient(circle at bottom left, ${color}30, transparent)`,
+          background: `radial-gradient(circle at bottom left, ${color}28, transparent)`,
         }}
       >
         {/* Left: thumbnail */}
-        <div className="relative w-[44%] shrink-0 overflow-hidden" style={{ minHeight: '150px' }}>
+        <div className="relative w-[44%] shrink-0 overflow-hidden">
           <FolderThumbnails thumbs={thumbs} icon={icon} color={color} />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0B0B0F] via-transparent to-transparent opacity-60" />
           {durStr && (
@@ -72,11 +74,11 @@ export function FolderCard({
           )}
         </div>
 
-        {/* Right: info */}
+        {/* Right: info — vertically centred */}
         <div
-          className="w-[56%] min-w-0 px-4 py-4"
+          className="flex w-[56%] min-w-0 flex-col justify-center px-4 py-4"
           style={{
-            background: `radial-gradient(circle at bottom left, ${color}50, ${color}00)`,
+            background: `radial-gradient(circle at bottom left, ${color}40, transparent)`,
           }}
         >
           <h3 className="line-clamp-2 text-[16px] font-semibold tracking-tight text-white">
