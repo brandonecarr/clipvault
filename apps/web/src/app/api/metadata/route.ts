@@ -24,6 +24,13 @@ function detectPlatform(url: string): Platform {
   return 'OTHER';
 }
 
+function extractYouTubeId(url: string): string | null {
+  const m = url.match(
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/,
+  );
+  return m ? m[1] : null;
+}
+
 interface OEmbedResponse {
   title?: string;
   author_name?: string;
@@ -35,8 +42,11 @@ interface OEmbedResponse {
 async function tryOEmbed(oEmbedUrl: string): Promise<OEmbedResponse | null> {
   try {
     const res = await fetch(oEmbedUrl, {
-      headers: { 'User-Agent': 'ClipVault/1.0' },
-      signal: AbortSignal.timeout(5000),
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return null;
     return await res.json();
@@ -45,10 +55,26 @@ async function tryOEmbed(oEmbedUrl: string): Promise<OEmbedResponse | null> {
   }
 }
 
+// Use separate double/single-quote patterns so apostrophes in content don't
+// prematurely end the capture (e.g. "Don't stop" with double-quoted attribute).
 function extractMeta(html: string, property: string): string | null {
   const patterns = [
-    new RegExp(`<meta[^>]+(?:property|name)=["']${property}["'][^>]+content=["']([^"']+)["']`, 'i'),
-    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${property}["']`, 'i'),
+    new RegExp(
+      `<meta[^>]+(?:property|name)=["']${property}["'][^>]+content="([^"]*)"`,
+      'i',
+    ),
+    new RegExp(
+      `<meta[^>]+content="([^"]*)"[^>]+(?:property|name)=["']${property}["']`,
+      'i',
+    ),
+    new RegExp(
+      `<meta[^>]+(?:property|name)=["']${property}["'][^>]+content='([^']*)'`,
+      'i',
+    ),
+    new RegExp(
+      `<meta[^>]+content='([^']*)'[^>]+(?:property|name)=["']${property}["']`,
+      'i',
+    ),
   ];
   for (const re of patterns) {
     const m = html.match(re);
@@ -62,17 +88,33 @@ function extractTitle(html: string): string | null {
   return m ? m[1].trim() : null;
 }
 
+// Strip trailing " - YouTube", " | YouTube", etc. from scraped page titles.
+function cleanTitle(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  return raw.replace(/\s*[-–|]\s*(YouTube|TikTok|Instagram|Vimeo|Reddit)\s*$/i, '').trim() || null;
+}
+
 async function tryOpenGraph(url: string) {
   try {
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ClipVault/1.0)' },
-      signal: AbortSignal.timeout(8000),
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return null;
     const html = await res.text();
+    const rawTitle =
+      extractMeta(html, 'og:title') ||
+      extractMeta(html, 'twitter:title') ||
+      extractTitle(html);
     return {
-      title: extractMeta(html, 'og:title') || extractMeta(html, 'twitter:title') || extractTitle(html),
-      description: extractMeta(html, 'og:description') || extractMeta(html, 'twitter:description'),
+      title: cleanTitle(rawTitle),
+      description:
+        extractMeta(html, 'og:description') || extractMeta(html, 'twitter:description'),
       thumbnailUrl: extractMeta(html, 'og:image') || extractMeta(html, 'twitter:image'),
     };
   } catch {
@@ -82,7 +124,9 @@ async function tryOpenGraph(url: string) {
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   let body: { url?: string };
@@ -96,6 +140,7 @@ export async function POST(req: NextRequest) {
   if (!url) return NextResponse.json({ error: 'URL required' }, { status: 400 });
 
   const platform = detectPlatform(url);
+  const ytId = platform === 'YOUTUBE' ? extractYouTubeId(url) : null;
 
   // Try oEmbed for supported platforms
   let oEmbed: OEmbedResponse | null = null;
@@ -114,11 +159,15 @@ export async function POST(req: NextRequest) {
   }
 
   if (oEmbed) {
+    // oEmbed succeeded — use its data, with YouTube thumbnail fallback
+    const thumbnail =
+      oEmbed.thumbnail_url ??
+      (ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : null);
     return NextResponse.json({
       platform,
       title: oEmbed.title ?? null,
       description: null,
-      thumbnailUrl: oEmbed.thumbnail_url ?? null,
+      thumbnailUrl: thumbnail,
       duration: oEmbed.duration ?? null,
       authorName: oEmbed.author_name ?? null,
       authorUrl: oEmbed.author_url ?? null,
@@ -127,11 +176,15 @@ export async function POST(req: NextRequest) {
 
   // Fall back to Open Graph scraping
   const og = await tryOpenGraph(url);
+  // For YouTube, always guarantee a thumbnail via the known ytimg URL
+  const thumbnail =
+    og?.thumbnailUrl ?? (ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : null);
+
   return NextResponse.json({
     platform,
     title: og?.title ?? null,
     description: og?.description ?? null,
-    thumbnailUrl: og?.thumbnailUrl ?? null,
+    thumbnailUrl: thumbnail,
     duration: null,
     authorName: null,
     authorUrl: null,
