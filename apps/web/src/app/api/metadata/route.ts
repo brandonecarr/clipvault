@@ -88,6 +88,21 @@ function extractTitle(html: string): string | null {
   return m ? m[1].trim() : null;
 }
 
+// Extract title from JSON-LD structured data — more reliable than og:title
+// for sites like YouTube that embed rich metadata as machine-readable JSON.
+function extractJsonLdTitle(html: string): string | null {
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = re.exec(html)) !== null) {
+    try {
+      const data = JSON.parse(match[1]);
+      const title = data.name || data.headline;
+      if (title && typeof title === 'string') return title;
+    } catch { /* skip malformed blocks */ }
+  }
+  return null;
+}
+
 // Strip trailing " - YouTube", " | YouTube", etc. from scraped page titles.
 function cleanTitle(raw: string | null | undefined): string | null {
   if (!raw) return null;
@@ -102,15 +117,21 @@ async function tryOpenGraph(url: string) {
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
+        // Bypass YouTube/Google cookie consent gates
+        Cookie: 'CONSENT=YES+1; SOCS=CAI',
       },
       signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return null;
     const html = await res.text();
+
+    // Title priority: og:title → twitter:title → JSON-LD → <title>
     const rawTitle =
       extractMeta(html, 'og:title') ||
       extractMeta(html, 'twitter:title') ||
+      extractJsonLdTitle(html) ||
       extractTitle(html);
+
     return {
       title: cleanTitle(rawTitle),
       description:
@@ -142,12 +163,26 @@ export async function POST(req: NextRequest) {
   const platform = detectPlatform(url);
   const ytId = platform === 'YOUTUBE' ? extractYouTubeId(url) : null;
 
-  // Try oEmbed for supported platforms
+  // Try oEmbed for supported platforms.
+  // For YouTube, run the official endpoint and noembed.com in parallel —
+  // noembed.com is a widely-used proxy that often succeeds when the direct
+  // endpoint is slow or blocked from cloud environments.
   let oEmbed: OEmbedResponse | null = null;
+
   if (platform === 'YOUTUBE') {
-    oEmbed = await tryOEmbed(
-      `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`,
-    );
+    // Use the canonical youtu.be URL format for the oEmbed call — more
+    // reliable than the full watch?v= form with extra parameters like &t=1s
+    const canonicalUrl = ytId
+      ? `https://www.youtube.com/watch?v=${ytId}`
+      : url;
+
+    const [official, proxy] = await Promise.all([
+      tryOEmbed(`https://www.youtube.com/oembed?url=${encodeURIComponent(canonicalUrl)}&format=json`),
+      tryOEmbed(`https://noembed.com/embed?url=${encodeURIComponent(canonicalUrl)}`),
+    ]);
+
+    // Pick whichever gave us a title; prefer official, fall back to proxy
+    oEmbed = (official?.title ? official : null) ?? (proxy?.title ? proxy : null) ?? official ?? proxy;
   } else if (platform === 'VIMEO') {
     oEmbed = await tryOEmbed(
       `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`,
@@ -159,15 +194,14 @@ export async function POST(req: NextRequest) {
   }
 
   // If oEmbed returned a non-empty title, use it straight away.
-  // If the title is missing/empty, still fall through to OG scraping so
-  // we have a second chance to get the title from the page itself.
-  if (oEmbed && oEmbed.title) {
+  // Otherwise fall through to OG scraping for a second attempt at the title.
+  if (oEmbed?.title) {
     const thumbnail =
       oEmbed.thumbnail_url ||
       (ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : null);
     return NextResponse.json({
       platform,
-      title: cleanTitle(oEmbed.title) || oEmbed.title, // prefer cleaned; fallback to raw
+      title: cleanTitle(oEmbed.title) || oEmbed.title,
       description: null,
       thumbnailUrl: thumbnail,
       duration: oEmbed.duration ?? null,
@@ -176,12 +210,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Fall back to Open Graph scraping (also catches the "oEmbed worked but
-  // title was empty" case — OG may still have the title in <meta og:title>).
+  // Fall back to Open Graph + JSON-LD scraping.
   const og = await tryOpenGraph(url);
 
-  // Prefer OG title; for YouTube/Vimeo/TikTok oEmbed may have author even
-  // when title was missing, so carry those through.
   const thumbnail =
     og?.thumbnailUrl ||
     oEmbed?.thumbnail_url ||

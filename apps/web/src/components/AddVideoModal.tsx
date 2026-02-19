@@ -226,7 +226,10 @@ export function AddVideoModal({ folderId, userId }: AddVideoModalProps) {
                       )}
                     </div>
                     <p className="line-clamp-2 text-sm font-semibold text-[#2D3436]">
-                      {metadata.title || url}
+                      {metadata.title || (() => {
+                        try { return new URL(url).hostname.replace(/^www\./, ''); }
+                        catch { return platformLabel; }
+                      })()}
                     </p>
                     {metadata.authorName && (
                       <p className="mt-0.5 text-xs text-[#636E72]">{metadata.authorName}</p>
