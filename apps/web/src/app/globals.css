@@ -1,8 +1,38 @@
 @import "tailwindcss";
 
+/* Class-based dark mode for Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Light mode design tokens */
 :root {
+  --page-bg: #F8F9FA;
+  --nav-bg: #ffffff;
+  --nav-border: #E0E0E0;
+  --surface: #ffffff;
+  --surface-subtle: #F8F9FA;
+  --text-primary: #2D3436;
+  --text-secondary: #636E72;
+  --text-muted: #B2BEC3;
+  --input-bg: #F8F9FA;
+  --input-border: #E0E0E0;
   --background: #ffffff;
   --foreground: #171717;
+}
+
+/* Dark mode overrides */
+.dark {
+  --page-bg: #0f172a;
+  --nav-bg: #1e293b;
+  --nav-border: #334155;
+  --surface: #1e293b;
+  --surface-subtle: #0f172a;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+  --input-bg: #0f172a;
+  --input-border: #334155;
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -12,16 +42,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--page-bg);
+  color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
 }
 

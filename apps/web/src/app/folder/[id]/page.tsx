@@ -5,6 +5,7 @@ import { NewFolderModal } from '../../../components/NewFolderModal';
 import { AddVideoModal } from '../../../components/AddVideoModal';
 import { FolderCard } from '../../../components/FolderCard';
 import { VideoCard } from '../../../components/VideoCard';
+import { ThemeToggle } from '../../../components/ThemeToggle';
 
 const PLATFORM_LABELS: Record<string, string> = {
   YOUTUBE: 'YouTube',
@@ -120,22 +121,23 @@ export default async function FolderPage({
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA]">
+    <div className="min-h-screen bg-[var(--page-bg)]">
       {/* Nav */}
-      <nav className="sticky top-0 z-10 border-b border-[#E0E0E0] bg-white">
+      <nav className="sticky top-0 z-10 border-b border-[var(--nav-border)] bg-[var(--nav-bg)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#6C5CE7]">
               <span className="text-base">📼</span>
             </div>
-            <span className="font-bold text-[#2D3436]">ClipVault</span>
+            <span className="font-bold text-[var(--text-primary)]">ClipVault</span>
           </Link>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-[#636E72]">{user.email}</span>
+            <span className="text-sm text-[var(--text-secondary)]">{user.email}</span>
+            <ThemeToggle />
             <form action="/auth/signout" method="POST">
               <button
                 type="submit"
-                className="rounded-lg border border-[#E0E0E0] px-3 py-1.5 text-xs font-medium text-[#636E72] transition hover:bg-[#F8F9FA] hover:text-[#2D3436]"
+                className="rounded-lg border border-[var(--input-border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface-subtle)] hover:text-[var(--text-primary)]"
               >
                 Sign out
               </button>
@@ -146,8 +148,8 @@ export default async function FolderPage({
 
       <main className="mx-auto max-w-5xl px-6 py-8">
         {/* Breadcrumb */}
-        <nav className="mb-6 flex items-center gap-1.5 text-sm text-[#636E72]">
-          <Link href="/library" className="transition hover:text-[#2D3436]">
+        <nav className="mb-6 flex items-center gap-1.5 text-sm text-[var(--text-secondary)]">
+          <Link href="/library" className="transition hover:text-[var(--text-primary)]">
             Library
           </Link>
           {parentFolder && (
@@ -155,31 +157,35 @@ export default async function FolderPage({
               <span>/</span>
               <Link
                 href={`/folder/${parentFolder.id}`}
-                className="transition hover:text-[#2D3436]"
+                className="transition hover:text-[var(--text-primary)]"
               >
                 {parentFolder.name}
               </Link>
             </>
           )}
           <span>/</span>
-          <span className="font-medium text-[#2D3436]">{typedFolder.name}</span>
+          <span className="font-medium text-[var(--text-primary)]">{typedFolder.name}</span>
         </nav>
 
         {/* Folder header */}
         <div className="mb-8 flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
             <div
-              className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl text-3xl"
-              style={{ backgroundColor: (typedFolder.color ?? '#6C5CE7') + '20' }}
+              className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl text-3xl"
+              style={typedFolder.icon?.startsWith('http') ? undefined : { backgroundColor: (typedFolder.color ?? '#6C5CE7') + '20' }}
             >
-              {typedFolder.icon ?? '📁'}
+              {typedFolder.icon?.startsWith('http') ? (
+                <img src={typedFolder.icon} alt="" className="h-full w-full object-cover" />
+              ) : (
+                typedFolder.icon ?? '📁'
+              )}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-[#2D3436]">{typedFolder.name}</h1>
+              <h1 className="text-2xl font-bold text-[var(--text-primary)]">{typedFolder.name}</h1>
               {typedFolder.description && (
-                <p className="mt-0.5 text-sm text-[#636E72]">{typedFolder.description}</p>
+                <p className="mt-0.5 text-sm text-[var(--text-secondary)]">{typedFolder.description}</p>
               )}
-              <p className="mt-1 text-xs text-[#B2BEC3]">
+              <p className="mt-1 text-xs text-[var(--text-muted)]">
                 {typedVideos.length} link{typedVideos.length !== 1 ? 's' : ''}
                 {typedSubfolders.length > 0 &&
                   ` · ${typedSubfolders.length} subfolder${typedSubfolders.length !== 1 ? 's' : ''}`}
@@ -195,7 +201,7 @@ export default async function FolderPage({
         {/* Subfolders */}
         {typedSubfolders.length > 0 && (
           <section className="mb-8">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#B2BEC3]">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
               Folders
             </h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -207,12 +213,13 @@ export default async function FolderPage({
                     id={sub.id}
                     name={sub.name}
                     color={sub.color ?? '#6C5CE7'}
-                    icon={sub.icon ?? '📁'}
+                    icon={sub.icon ?? ''}
                     description={sub.description}
                     thumbs={stats.thumbs}
                     videoCount={stats.count}
                     totalDuration={stats.totalDuration}
                     lastAdded={stats.lastAdded}
+                    userId={user.id}
                   />
                 );
               })}
@@ -224,7 +231,7 @@ export default async function FolderPage({
         <section>
           {typedVideos.length > 0 ? (
             <>
-              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#B2BEC3]">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                 Links
               </h2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -239,12 +246,12 @@ export default async function FolderPage({
               </div>
             </>
           ) : typedSubfolders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl bg-white py-16 shadow-sm">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#F0EDFF]">
+            <div className="flex flex-col items-center justify-center rounded-2xl bg-[var(--surface)] py-16 shadow-sm">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#F0EDFF] dark:bg-[#6C5CE7]/20">
                 <span className="text-3xl">🔗</span>
               </div>
-              <h2 className="mb-1.5 text-base font-semibold text-[#2D3436]">No links yet</h2>
-              <p className="mb-5 max-w-xs text-center text-sm text-[#636E72]">
+              <h2 className="mb-1.5 text-base font-semibold text-[var(--text-primary)]">No links yet</h2>
+              <p className="mb-5 max-w-xs text-center text-sm text-[var(--text-secondary)]">
                 Paste any YouTube, TikTok, Instagram, or other social media URL to save it here.
               </p>
               <AddVideoModal folderId={id} userId={user.id} />

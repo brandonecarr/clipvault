@@ -20,11 +20,12 @@ function Cell({ src, className }: { src: string; className?: string }) {
 }
 
 export function FolderThumbnails({ thumbs, icon, color }: FolderThumbnailsProps) {
+  // User-uploaded cover photo always takes precedence over video thumbnails
+  if (icon && icon.startsWith('http')) {
+    return <Cell src={icon} className="h-full w-full" />;
+  }
+
   if (thumbs.length === 0) {
-    // icon may be a URL (uploaded photo) or null (no icon set)
-    if (icon && icon.startsWith('http')) {
-      return <Cell src={icon} className="h-full w-full" />;
-    }
     return (
       <div
         className="flex h-full w-full items-center justify-center"

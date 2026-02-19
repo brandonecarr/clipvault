@@ -285,40 +285,40 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
           onClick={() => setEditing(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+            className="w-full max-w-md rounded-2xl bg-[var(--surface)] p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-[#2D3436]">Edit Link</h2>
-              <button type="button" onClick={() => setEditing(false)} className="text-xl leading-none text-[#636E72] hover:text-[#2D3436]">×</button>
+              <h2 className="text-lg font-bold text-[var(--text-primary)]">Edit Link</h2>
+              <button type="button" onClick={() => setEditing(false)} className="text-xl leading-none text-[var(--text-secondary)] hover:text-[var(--text-primary)]">×</button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[#636E72]">Title</label>
+                <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)]">Title</label>
                 <input
                   autoFocus
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   placeholder={video.url}
-                  className="w-full rounded-xl border border-[#E0E0E0] bg-[#F8F9FA] px-4 py-2.5 text-sm text-[#2D3436] outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
+                  className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[#636E72]">
-                  Notes <span className="text-[#B2BEC3]">(optional)</span>
+                <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)]">
+                  Notes <span className="text-[var(--text-muted)]">(optional)</span>
                 </label>
                 <textarea
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
                   placeholder="Why did you save this?"
                   rows={3}
-                  className="w-full resize-none rounded-xl border border-[#E0E0E0] bg-[#F8F9FA] px-4 py-2.5 text-sm text-[#2D3436] outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
+                  className="w-full resize-none rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
                 />
               </div>
               {error && <p className="rounded-lg bg-red-50 px-4 py-2 text-xs text-red-600">{error}</p>}
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setEditing(false)}
-                  className="flex-1 rounded-xl border border-[#E0E0E0] py-2.5 text-sm font-medium text-[#636E72] transition hover:bg-[#F8F9FA]">
+                  className="flex-1 rounded-xl border border-[var(--input-border)] py-2.5 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface-subtle)]">
                   Cancel
                 </button>
                 <button type="button" onClick={handleSaveEdit} disabled={saving}
@@ -338,14 +338,14 @@ export function VideoCard({ video, platformColor, platformLabel }: VideoCardProp
           onClick={() => setConfirmDelete(false)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+            className="w-full max-w-sm rounded-2xl bg-[var(--surface)] p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="mb-1 text-base font-bold text-[#2D3436]">Delete link?</h2>
-            <p className="mb-5 text-sm text-[#636E72]">{displayTitle}</p>
+            <h2 className="mb-1 text-base font-bold text-[var(--text-primary)]">Delete link?</h2>
+            <p className="mb-5 text-sm text-[var(--text-secondary)]">{displayTitle}</p>
             <div className="flex gap-3">
               <button type="button" onClick={() => setConfirmDelete(false)}
-                className="flex-1 rounded-xl border border-[#E0E0E0] py-2.5 text-sm font-medium text-[#636E72] transition hover:bg-[#F8F9FA]">
+                className="flex-1 rounded-xl border border-[var(--input-border)] py-2.5 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface-subtle)]">
                 Cancel
               </button>
               <button type="button" onClick={handleDelete} disabled={deleting}

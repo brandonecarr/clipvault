@@ -107,14 +107,14 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
           onClick={handleClose}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+            className="w-full max-w-md rounded-2xl bg-[var(--surface)] p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-[#2D3436]">New Folder</h2>
+              <h2 className="text-lg font-bold text-[var(--text-primary)]">New Folder</h2>
               <button
                 onClick={handleClose}
-                className="text-xl leading-none text-[#636E72] hover:text-[#2D3436]"
+                className="text-xl leading-none text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               >
                 ×
               </button>
@@ -122,7 +122,7 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Live preview */}
-              <div className="flex items-center gap-3 rounded-xl bg-[#F8F9FA] p-3">
+              <div className="flex items-center gap-3 rounded-xl bg-[var(--surface-subtle)] p-3">
                 <div
                   className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl"
                   style={
@@ -140,31 +140,31 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <div className="truncate font-semibold text-[#2D3436]">
+                  <div className="truncate font-semibold text-[var(--text-primary)]">
                     {name || 'Folder name'}
                   </div>
                   {description && (
-                    <div className="truncate text-xs text-[#636E72]">{description}</div>
+                    <div className="truncate text-xs text-[var(--text-secondary)]">{description}</div>
                   )}
                 </div>
               </div>
 
               {/* Name */}
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[#636E72]">Name</label>
+                <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)]">Name</label>
                 <input
                   autoFocus
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="My Folder"
-                  className="w-full rounded-xl border border-[#E0E0E0] bg-[#F8F9FA] px-4 py-2.5 text-sm text-[#2D3436] outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
+                  className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
                 />
               </div>
 
               {/* Color */}
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[#636E72]">Color</label>
+                <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)]">Color</label>
                 <div className="flex gap-2">
                   {COLOR_PRESETS.map((c) => (
                     <button
@@ -184,8 +184,8 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
 
               {/* Cover photo */}
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[#636E72]">
-                  Cover Photo <span className="text-[#B2BEC3]">(optional)</span>
+                <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)]">
+                  Cover Photo <span className="text-[var(--text-muted)]">(optional)</span>
                 </label>
                 <div className="flex items-center gap-3">
                   {iconPreview && (
@@ -196,7 +196,7 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-[#E0E0E0] px-4 py-3 text-sm text-[#636E72] transition hover:border-[#6C5CE7] hover:text-[#6C5CE7]"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--input-border)] px-4 py-3 text-sm text-[var(--text-secondary)] transition hover:border-[#6C5CE7] hover:text-[#6C5CE7]"
                   >
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -226,15 +226,15 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
 
               {/* Description */}
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-[#636E72]">
-                  Description <span className="text-[#B2BEC3]">(optional)</span>
+                <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)]">
+                  Description <span className="text-[var(--text-muted)]">(optional)</span>
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="What goes in this folder?"
                   rows={2}
-                  className="w-full resize-none rounded-xl border border-[#E0E0E0] bg-[#F8F9FA] px-4 py-2.5 text-sm text-[#2D3436] outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
+                  className="w-full resize-none rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[#6C5CE7] focus:ring-2 focus:ring-[#6C5CE7]/20"
                 />
               </div>
 
@@ -246,7 +246,7 @@ export function NewFolderModal({ userId, parentId }: NewFolderModalProps) {
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="flex-1 rounded-xl border border-[#E0E0E0] py-2.5 text-sm font-medium text-[#636E72] transition hover:bg-[#F8F9FA]"
+                  className="flex-1 rounded-xl border border-[var(--input-border)] py-2.5 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface-subtle)]"
                 >
                   Cancel
                 </button>

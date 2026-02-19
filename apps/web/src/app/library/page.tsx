@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { createClient } from '../../lib/supabase/server';
 import { NewFolderModal } from '../../components/NewFolderModal';
 import { FolderCard } from '../../components/FolderCard';
+import { ThemeToggle } from '../../components/ThemeToggle';
 
 interface Folder {
   id: string;
@@ -53,22 +54,23 @@ export default async function LibraryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA]">
+    <div className="min-h-screen bg-[var(--page-bg)]">
       {/* Nav */}
-      <nav className="sticky top-0 z-10 border-b border-[#E0E0E0] bg-white">
+      <nav className="sticky top-0 z-10 border-b border-[var(--nav-border)] bg-[var(--nav-bg)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#6C5CE7]">
               <span className="text-base">📼</span>
             </div>
-            <span className="font-bold text-[#2D3436]">ClipVault</span>
+            <span className="font-bold text-[var(--text-primary)]">ClipVault</span>
           </Link>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-[#636E72]">{user.email}</span>
+            <span className="text-sm text-[var(--text-secondary)]">{user.email}</span>
+            <ThemeToggle />
             <form action="/auth/signout" method="POST">
               <button
                 type="submit"
-                className="rounded-lg border border-[#E0E0E0] px-3 py-1.5 text-xs font-medium text-[#636E72] transition hover:bg-[#F8F9FA] hover:text-[#2D3436]"
+                className="rounded-lg border border-[var(--input-border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition hover:bg-[var(--surface-subtle)] hover:text-[var(--text-primary)]"
               >
                 Sign out
               </button>
@@ -81,8 +83,8 @@ export default async function LibraryPage() {
       <main className="mx-auto max-w-5xl px-6 py-10">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-[#2D3436]">My Library</h1>
-            <p className="mt-1 text-sm text-[#636E72]">
+            <h1 className="text-2xl font-bold text-[var(--text-primary)]">My Library</h1>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
               {folders && folders.length > 0
                 ? `${folders.length} folder${folders.length !== 1 ? 's' : ''}`
                 : 'No folders yet'}
@@ -101,23 +103,24 @@ export default async function LibraryPage() {
                   id={folder.id}
                   name={folder.name}
                   color={folder.color ?? '#6C5CE7'}
-                  icon={folder.icon ?? '📁'}
+                  icon={folder.icon ?? ''}
                   description={folder.description}
                   thumbs={stats.thumbs}
                   videoCount={stats.count}
                   totalDuration={stats.totalDuration}
                   lastAdded={stats.lastAdded}
+                  userId={user.id}
                 />
               );
             })}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center rounded-2xl bg-white py-20 shadow-sm">
-            <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-[#F0EDFF]">
+          <div className="flex flex-col items-center justify-center rounded-2xl bg-[var(--surface)] py-20 shadow-sm">
+            <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-[#F0EDFF] dark:bg-[#6C5CE7]/20">
               <span className="text-4xl">📁</span>
             </div>
-            <h2 className="mb-2 text-lg font-semibold text-[#2D3436]">Your library is empty</h2>
-            <p className="mb-6 max-w-xs text-center text-sm text-[#636E72]">
+            <h2 className="mb-2 text-lg font-semibold text-[var(--text-primary)]">Your library is empty</h2>
+            <p className="mb-6 max-w-xs text-center text-sm text-[var(--text-secondary)]">
               Create a folder to start organizing your saved links, or use the ClipVault mobile app
               to save videos on the go.
             </p>
