@@ -220,7 +220,7 @@ export default async function FolderPage({
               <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#B2BEC3]">
                 Links
               </h2>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {typedVideos.map((video) => {
                   const color = PLATFORM_COLORS[video.platform] ?? '#636E72';
                   const label = PLATFORM_LABELS[video.platform] ?? 'Link';
@@ -231,52 +231,99 @@ export default async function FolderPage({
                       href={video.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm transition hover:shadow-md"
+                      className="group relative aspect-[3/4] overflow-hidden rounded-3xl shadow-[0_2.8px_2.2px_rgba(0,0,0,0.034),0_6.7px_5.3px_rgba(0,0,0,0.048),0_12.5px_10px_rgba(0,0,0,0.06),0_22.3px_17.9px_rgba(0,0,0,0.072),0_41.8px_33.4px_rgba(0,0,0,0.086),0_100px_80px_rgba(0,0,0,0.12)] transition-transform duration-300 hover:scale-[1.02]"
                     >
-                      {/* Thumbnail */}
-                      <div className="relative h-40 w-full bg-[#F0EDFF]">
-                        {video.thumbnailUrl ? (
-                          <img
-                            src={video.thumbnailUrl}
-                            alt={video.title ?? ''}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div
-                            className="flex h-full w-full items-center justify-center text-4xl opacity-20"
-                            style={{ color }}
+                      {/* Background image */}
+                      {video.thumbnailUrl ? (
+                        <img
+                          src={video.thumbnailUrl}
+                          alt={video.title ?? ''}
+                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div
+                          className="absolute inset-0"
+                          style={{ backgroundColor: color + '30' }}
+                        />
+                      )}
+
+                      {/* Gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+
+                      {/* Top-left: platform + author */}
+                      <div className="absolute left-4 top-4 text-white">
+                        <div className="mb-2 flex items-center gap-2">
+                          <span
+                            className="rounded-full px-2 py-0.5 text-xs font-semibold text-white"
+                            style={{ backgroundColor: color }}
                           >
-                            ▶
-                          </div>
-                        )}
-                        {/* Platform badge */}
-                        <span
-                          className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-xs font-semibold text-white"
-                          style={{ backgroundColor: color }}
-                        >
-                          {label}
-                        </span>
-                        {/* Duration */}
-                        {duration && (
-                          <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-1.5 py-0.5 text-xs font-medium text-white">
-                            {duration}
+                            {label}
                           </span>
-                        )}
-                      </div>
-                      {/* Info */}
-                      <div className="flex flex-1 flex-col p-3">
-                        <p className="line-clamp-2 text-sm font-semibold leading-tight text-[#2D3436]">
-                          {video.title || video.url}
-                        </p>
-                        {video.authorName && (
-                          <p className="mt-0.5 text-xs text-[#636E72]">{video.authorName}</p>
-                        )}
+                          {video.authorName && (
+                            <span className="text-xs font-medium drop-shadow">
+                              {video.authorName}
+                            </span>
+                          )}
+                        </div>
                         {video.notes && (
-                          <p className="mt-1.5 line-clamp-2 text-xs text-[#636E72] italic">
+                          <p className="max-w-[180px] rounded-lg bg-black/20 p-2 text-xs leading-4 backdrop-blur-sm">
                             {video.notes}
                           </p>
                         )}
                       </div>
+
+                      {/* Top-right: play button */}
+                      <div className="absolute right-4 top-4">
+                        <div className="rounded-full bg-white/20 p-2 backdrop-blur-sm transition-colors group-hover:bg-white/30">
+                          <svg
+                            className="h-4 w-4 text-white"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                          >
+                            <path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* Bottom: title + duration */}
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <div className="rounded-xl bg-white/10 p-3 backdrop-blur-sm">
+                          <div className="flex items-start justify-between gap-2 text-white">
+                            <span className="line-clamp-2 text-sm font-medium leading-tight">
+                              {video.title || video.url}
+                            </span>
+                            {duration && (
+                              <span className="flex flex-shrink-0 items-center gap-1 text-xs opacity-80">
+                                <svg
+                                  className="h-3 w-3"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="1.5"
+                                >
+                                  <circle cx="12" cy="12" r="10" />
+                                  <path d="M12 6v6l4 2" />
+                                </svg>
+                                {duration}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* No-thumbnail fallback icon */}
+                      {!video.thumbnailUrl && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <svg
+                            className="h-16 w-16 opacity-10"
+                            style={{ color }}
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                          >
+                            <path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" />
+                          </svg>
+                        </div>
+                        )}
                     </a>
                   );
                 })}
