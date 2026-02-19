@@ -250,7 +250,7 @@ export async function POST(req: NextRequest) {
     const thumbnail =
       innertube.thumbnail ||
       oEmbed?.thumbnail_url ||
-      `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+      `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`;
 
     return NextResponse.json({
       platform,
