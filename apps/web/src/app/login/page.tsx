@@ -13,32 +13,46 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  const supabaseConfigured =
+    !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!supabaseConfigured) {
+      setError('App is not yet configured. Please check back soon.');
+      return;
+    }
     setError('');
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (authError) {
-      setError(authError.message);
+    try {
+      const supabase = createClient();
+      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) {
+        setError(authError.message);
+        setLoading(false);
+      } else {
+        router.push('/library');
+        router.refresh();
+      }
+    } catch {
+      setError('Something went wrong. Please try again.');
       setLoading(false);
-    } else {
-      router.push('/library');
-      router.refresh();
     }
   }
 
   async function handleGoogleLogin() {
+    if (!supabaseConfigured) return;
     setGoogleLoading(true);
-    const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${location.origin}/auth/callback`,
-      },
-    });
+    try {
+      const supabase = createClient();
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${location.origin}/auth/callback` },
+      });
+    } catch {
+      setGoogleLoading(false);
+    }
   }
 
   return (
